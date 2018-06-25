@@ -46,8 +46,7 @@ class Deep_Q__network(nn.Module):
 
         self.initialize_weights()
     
-        self.criterion = nn.MSELoss().cuda()
-        self.optimizer = optim.Adam(self.parameters(), lr=constant.LEARNING_RATE)
+        
 
 
     def forward(self, input):

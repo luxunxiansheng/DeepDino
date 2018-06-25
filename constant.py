@@ -15,7 +15,7 @@ INITIAL_EPSILON = 0.1  # starting value of epsilon
 REPLAY_MEMORY = 50000  # number of previous transitions to remember
 BATCH = 16  # size of minibatch
 FRAME_PER_ACTION = 1
-LEARNING_RATE = 1e-2
+LEARNING_RATE = 1e-4
 img_rows, img_cols = 80, 80
 img_channels = 4  # We stack 4 frames
 

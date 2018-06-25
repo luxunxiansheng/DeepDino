@@ -12,6 +12,10 @@ from random import randint
 import pandas as pd
 import torch
 
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+from torch.autograd import Variable
 
 import constant
 from constant import Action
@@ -21,10 +25,12 @@ from deep_q_network import Deep_Q__network
 # Intialize log structures from file if exists else create new
 loss_df = pd.read_csv(constant.loss_file_path) if os.path.isfile(
     constant.loss_file_path) else pd.DataFrame(columns=['loss'])
+
 q_values_df = pd.read_csv(constant.q_value_file_path) if os.path.isfile(
     constant.q_value_file_path) else pd.DataFrame(columns=['qvalues'])
-actions_df = pd.read_csv() if os.path.isfile(
-    constant.actions_file_path) else pd.DataFrame(columns=['actions'])
+
+actions_df = pd.read_csv(constant.actions_file_path) if os.path.isfile(constant.actions_file_path) else pd.DataFrame(columns=['actions'])
+
 scores_df = pd.read_csv(constant.score_file_path) if os.path.isfile(
     constant.score_file_path) else pd.DataFrame(columns=['scores'])
 
@@ -62,7 +68,7 @@ def init_cache(q_value_network):
     save_weights(q_value_network)
 
 
-def learn(samples):
+def learn(samples,q_value_network,optimizer,criterion):
     
     q_value= torch.zeros(constant.BATCH)
     td_target=torch.zeros([constant.BATCH])
@@ -74,21 +80,21 @@ def learn(samples):
         state_t1 = samples[i][3]
         terminal = samples[i][4]
 
-                        
-            # td(0) 
-        Q_sa_t1 = self.forward(state_t1) 
+                       
+        # td(0) 
+        Q_sa_t1 = q_value_network(state_t1) 
         td_target[i] = reward_t if terminal else reward_t+ constant.GAMMA * torch.max(Q_sa_t1).tolist()
          
 
-        Q_sa_t = self.forward(state_t)
+        Q_sa_t = q_value_network(state_t)
         q_value[i]   = Q_sa_t[int(action_t)]
   
             
-    loss= self.criterion(q_value,td_target).cuda()
+    loss= criterion(q_value,td_target).cuda()
                 
-    self.optimizer.zero_grad()
+    optimizer.zero_grad()
     loss.backward()
-    self.optimizer.step()
+    optimizer.step()
 
     return loss 
 
@@ -107,10 +113,17 @@ def train(game, deep_q_network):
 
     # get next step after performing the action
     image_t, _, terminal = game.get_state(Action.DO_NOTHING)
-    initial_state = torch.stack((image_t, image_t, image_t, image_t)).view(1, 4, 80, 80)
-    state_t1 = initial_state
-    state_t = initial_state
+    
+    state_t =  torch.stack((image_t, image_t, image_t, image_t)).view(1, 4, 80, 80)
+
+    
+
+    state_t1 = torch.ones(1, 4, 80, 80).cuda()
+    initial_state = state_t
   
+ 
+    criterion = nn.MSELoss().cuda()
+    optimizer = optim.Adam(deep_q_network.parameters(), lr=constant.LEARNING_RATE)
     
     while (True):  # endless running
 
@@ -137,8 +150,9 @@ def train(game, deep_q_network):
         state_t1[0][0] = state_t[0][1]
         state_t1[0][1] = state_t[0][2]
         state_t1[0][2] = state_t[0][3]
-        state_t1[0][3] = image_t1
-
+        state_t1[0][3] = image_t1[0]
+    
+       
         # store the transition in experience_replay_memory
         experience_replay_memory.append((state_t, action_t, reward_t, state_t1, terminal))
 
@@ -149,9 +163,8 @@ def train(game, deep_q_network):
 
 
         if(t>constant.OBSERVATION):
-
             state_batch = random.sample(experience_replay_memory, constant.BATCH)
-            loss=deep_q_network.learn(state_batch)
+            loss=learn(state_batch,deep_q_network,optimizer,criterion)
             loss_df.loc[len(loss_df)] = loss.tolist()
             #q_values_df.loc[len(q_values_df)] = torch.max(Q_sa_t1, 1)[0][0].tolist()
         
