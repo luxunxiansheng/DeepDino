@@ -20,7 +20,6 @@ img_rows, img_cols = 80, 80
 img_channels = 4  # We stack 4 frames
 
 
-
 class Action(Enum):
     DO_NOTHING=0
     JUMP=1

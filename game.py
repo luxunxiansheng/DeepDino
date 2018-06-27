@@ -53,11 +53,7 @@ class Game:
 
         self._actions_df=actions_df
         self._scores_df=scores_df
-        
-        # display the processed image on screen using openCV, implemented using python coroutine
-        self._display = self._show_img()
-        self._display.__next__()  # initiliaze the display coroutine
-
+              
         
 
     def get_state(self, action):
@@ -70,15 +66,14 @@ class Game:
             self._press_up()
 
         image = self._grab_screen()
-
-        self._display.send(np.asarray(image))  # display the image on screen
+       
         if self._get_crashed():
             # log the score when game is over
             self._scores_df.loc[len(self._scores_df)] = score
             self.restart()
             reward = -1
             is_over = True
-        return self.transform(image).cuda(), torch.tensor(reward).cuda(), torch.tensor(is_over).cuda()  # return the Experience tuple
+        return self.transform(image), torch.tensor(reward), torch.tensor(is_over)  # return the Experience tuple
 
     def _get_crashed(self):
         return self._driver.execute_script("return Runner.instance_.crashed")
@@ -112,20 +107,7 @@ class Game:
     def end(self):
         self._driver.close()
 
-    def _show_img(self, graphs=False):
-        """
-        Show images in new window
-        """
-        while True:
-            screen = (yield)
-            window_title = "logs" if graphs else "game_play"
-            cv2.namedWindow(window_title, cv2.WINDOW_NORMAL)
-            cv2.resize(screen, (800, 400))
-            cv2.imshow(window_title, screen)
-            if (cv2.waitKey(1) & 0xFF == ord('q')):
-                cv2.destroyAllWindows()
-                break
-
+    
     def _grab_screen(self):
         image_b64 = self._driver.execute_script(self._GET_BASE64_SCRIPT)
         image=Image.open(BytesIO(base64.b64decode(image_b64)))
