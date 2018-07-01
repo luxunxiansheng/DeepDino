@@ -13,10 +13,10 @@ EXPLORE = 100000  # frames over which to anneal epsilon
 FINAL_EPSILON = 0.0001  # final value of epsilon
 INITIAL_EPSILON = 0.1  # starting value of epsilon
 REPLAY_MEMORY = 50000  # number of previous transitions to remember
-BATCH = 16  # size of minibatch
+BATCH = 32  # size of minibatch
 FRAME_PER_ACTION = 1
 LEARNING_RATE = 1e-4
-img_rows, img_cols = 80, 80
+IMG_ROWS, IMG_COLS = 40,40
 img_channels = 4  # We stack 4 frames
 
 

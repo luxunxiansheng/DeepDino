@@ -19,6 +19,7 @@ import cv2  # opencv
 from torchvision import transforms
 
 from constant import Action
+import constant
 
 
 class Game:
@@ -35,9 +36,9 @@ class Game:
     _CAPA=DesiredCapabilities.CHROME
     _CAPA["pageLoadStrategy"]="none"       
     
-    transform= transforms.Compose([transforms.CenterCrop((150,600)),transforms.Resize((80,80)) ,transforms.Grayscale(),transforms.ToTensor()])
+    transform= transforms.Compose([transforms.CenterCrop((150,600)),transforms.Resize((constant.IMG_ROWS ,constant.IMG_COLS)) ,transforms.Grayscale(),transforms.ToTensor()])
 
-    def __init__(self,actions_df,scores_df):
+    def __init__(self):
        
         self._driver = webdriver.Chrome(executable_path=self._CHROME_DRIVER_PATH,desired_capabilities=self._CAPA)
         self._driver.set_window_position(x=-10, y=0)
@@ -50,16 +51,11 @@ class Game:
 
         self._driver.execute_script("Runner.config.ACCELERATION=0")
         self._driver.execute_script(self._INIT_SCRIPT)
-
-        self._actions_df=actions_df
-        self._scores_df=scores_df
+       
               
         
 
     def get_state(self, action):
-        # storing actions in a dataframe
-        self._actions_df.loc[len(self._actions_df)] = action
-        score = self._get_score()
         reward =1
         is_over = False  # game over
         if action==Action.JUMP:
@@ -69,7 +65,6 @@ class Game:
        
         if self._get_crashed():
             # log the score when game is over
-            self._scores_df.loc[len(self._scores_df)] = score
             self.restart()
             reward = -1
             is_over = True

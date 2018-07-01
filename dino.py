@@ -20,61 +20,14 @@ from torch.autograd import Variable
 import constant
 from constant import Action
 from game import Game
-from deep_q_network import Deep_Q__network
+from deep_q_network import Deep_Q__network,DQN
 
 from torchvision.utils import make_grid
 import matplotlib.pyplot as plt 
 import numpy as np 
 
+  
 
-
-
-# Intialize log structures from file if exists else create new
-loss_df = pd.read_csv(constant.loss_file_path) if os.path.isfile(
-    constant.loss_file_path) else pd.DataFrame(columns=['loss'])
-
-q_values_df = pd.read_csv(constant.q_value_file_path) if os.path.isfile(
-    constant.q_value_file_path) else pd.DataFrame(columns=['qvalues'])
-
-actions_df = pd.read_csv(constant.actions_file_path) if os.path.isfile(constant.actions_file_path) else pd.DataFrame(columns=['actions'])
-
-scores_df = pd.read_csv(constant.score_file_path) if os.path.isfile(
-    constant.score_file_path) else pd.DataFrame(columns=['scores'])
-
-
-
-
-def save_obj(obj, name):
-    # dump files into objects folder
-    with open('/home/lb/workspace/Dino/objects/' + name + '.pkl', 'wb') as f:
-        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
-
-
-def load_obj(name):
-    with open('/home/lb/workspace/Dino/objects/' + name + '.pkl', 'rb') as f:
-        return pickle.load(f)
-
-
-def save_weights(network):
-    with open(constant.model_file_path, 'wb') as f:  # dump files into objects folder
-        torch.save(network.state_dict(), f)
-
-
-def load_weights(network):
-    network.load_state_dict(torch.load(constant.model_file_path))
-
-
-# training variables saved as checkpoints to filesystem to resume training from the same step
-
-
-def init_cache(q_value_network):
-    """initial variable caching, done only once"""
-    save_obj(constant.INITIAL_EPSILON, "epsilon")
-    t = 0
-    save_obj(t, "time")
-    experience_replay_memory = deque()
-    save_obj(experience_replay_memory, "experience_replay_memory")
-    save_weights(q_value_network)
 
 def show(img):
     npimg=img.numpy()
@@ -95,7 +48,7 @@ def learn(samples,q_value_network,optimizer,criterion):
         terminal = samples[i][4]
                        
         # td(0) 
-        predicted_Q_sa_t1 = q_value_network(state_t1.cuda()) 
+        predicted_Q_sa_t1 = q_value_network(state_t1.cuda())
         td_target[i][int(action_t)] = reward_t if terminal else reward_t+ constant.GAMMA * torch.max(predicted_Q_sa_t1).tolist()
    
         predicted_Q_sa_t = q_value_network(state_t.cuda())
@@ -114,30 +67,26 @@ def learn(samples,q_value_network,optimizer,criterion):
 
 
 def train(game, deep_q_network):
+   
+    t = 0
 
-    last_time = time.time()
-    # restore the previous
-    experience_replay_memory = load_obj("experience_replay_memory")  # load from file system
-    load_weights(deep_q_network)
-    epsilon = load_obj("epsilon")
-    t = load_obj("time")
-    Q_sa_t1 = torch.zeros([2]).cuda()
-
+    experience_replay_memory = deque()
+    epsilon = constant.INITIAL_EPSILON
+      
     # get next step after performing the action
     image_t, _, terminal = game.get_state(Action.DO_NOTHING)
-    state_t =  torch.stack((image_t, image_t, image_t, image_t))
-    state_t1 = torch.ones(4, 1, 80, 80)
-    initial_state = state_t
-   
+    initial_state =  torch.stack((image_t, image_t, image_t, image_t))
+    
+    state_t = initial_state.clone()
+    state_t1 = initial_state.clone()    
+       
     criterion = nn.MSELoss().cuda()
     optimizer = optim.Adam(deep_q_network.parameters(), lr=constant.LEARNING_RATE)
     
     while (True):  # endless running
-
         loss = 0
         reward_t = 0
         action_t = Action.DO_NOTHING
-
         # choose an action epsilon gredy
         if t % constant.FRAME_PER_ACTION == 0:  # parameter to skip frames for actions
             action_t = e_greedy(epsilon, deep_q_network, state_t)
@@ -149,20 +98,15 @@ def train(game, deep_q_network):
 
         # run the selected action and observed next state and reward
         image_t1, reward_t, terminal = game.get_state(action_t)
-
-        # helpful for measuring frame rate
-        # print('fps: {0}'.format(1 / (time.time()-last_time)))
-        last_time = time.time()
-
+        
         state_t1[0] = state_t[1].clone()
         state_t1[1] = state_t[2].clone()
         state_t1[2] = state_t[3].clone()
         state_t1[3] =   image_t1.clone()
         
         #show(make_grid([state_t[0],state_t[1],state_t[2],state_t[3],state_t1[0],state_t1[1],state_t1[2],image_t1],nrow=4,padding=10))
-       
-    
-       
+ 
+           
         # store the transition in experience_replay_memory
         experience_replay_memory.append((state_t, action_t, reward_t, state_t1, terminal))
 
@@ -171,49 +115,21 @@ def train(game, deep_q_network):
         if memory_len > constant.REPLAY_MEMORY:
             experience_replay_memory.popleft()
 
-
         if(t>constant.OBSERVATION):
             state_batch = random.sample(experience_replay_memory, constant.BATCH)
             loss=learn(state_batch,deep_q_network,optimizer,criterion)
             
-            if t%100==0:
+            if t%10==0:
                 print("t:",t,  "loss:", loss.tolist())
-            # loss_df.loc[len(loss_df)] = loss.tolist()
-            #q_values_df.loc[len(q_values_df)] = torch.max(Q_sa_t1, 1)[0][0].tolist()
+      
         
-        # reset game to initial frame if terminate
-        state_t = initial_state.clone() if terminal else state_t1.clone()
+        if terminal:
+            state_t = initial_state.clone() 
+        else: 
+            state_t = state_t1.clone()
+        
         t = t + 1
-
-        # # save progress every 1000 iterations
-        # if t % 1000 == 0:
-        #     print("Now we save model")
-        #     game.pause()  # pause game while saving to filesystem
-        #     save_weights(deep_q_network)
-        #     save_obj(experience_replay_memory,"experience_replay_memory")  # saving episodes
-        #     save_obj(t, "time")  # caching time steps
-        #     # cache epsilon to avoid repeated randomness in actions
-        #     save_obj(epsilon, "epsilon")
-        #     loss_df.to_csv(constant.loss_file_path, index=False)
-        #     scores_df.to_csv(constant.score_file_path, index=False)
-        #     actions_df.to_csv(constant.actions_file_path, index=False)
-        #     q_values_df.to_csv(constant.q_value_file_path, index=False)
-        #     game.resume()
-        # print info
-        state = ""
-        if t <= constant.OBSERVATION:
-            state = "observe"
-        elif t <= constant.OBSERVATION + constant.EXPLORE:
-            state = "explore"
-        else:
-            state = "train"
-
-        # print("TIMESTEP", t, "/ STATE", state, "/ EPSILON", epsilon, "/ ACTION",
-        #       action_t, "/ REWARD", reward_t.tolist(), "/ Q_MAX ", torch.max(Q_sa_t1).tolist(), "/ Loss ", loss)
-
-    print("Episode finished!")
-    print("************************")
-
+   
 
 def e_greedy(epsilon, q_value_network, state):
 
@@ -240,14 +156,13 @@ def main():
     gpus = [0, 1, 2, 3]
     torch.cuda.set_device(gpus[3])
 
-    DQN = Deep_Q__network()
-    DQN.cuda()
-
-    init_cache(DQN)
-    game = Game(actions_df, scores_df)
+    model = DQN()
+    model.cuda()
+  
+    game = Game()
 
     try:
-        train(game, DQN)
+        train(game, model)
     except StopIteration:
         game.end()
 
