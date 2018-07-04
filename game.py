@@ -5,7 +5,7 @@ from io import BytesIO
 import numpy as np
 import pandas as pd
 import torch
-from PIL import Image
+
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -15,6 +15,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC 
 from selenium.webdriver.common.by import By 
 
+from PIL import Image
 
 from constant import Action
 import constant
@@ -59,7 +60,7 @@ class Game:
             self._press_up()
 
         image = self._grab_screen()
-       
+   
         if self._get_crashed():
             # log the score when game is over
             self.restart()

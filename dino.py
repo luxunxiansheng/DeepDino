@@ -27,6 +27,7 @@ import matplotlib.pyplot as plt
 import numpy as np 
 from torchvision import transforms
 
+
 # if gpu is to be used
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -71,7 +72,7 @@ def learn(samples,policy_net, target_net,optimizer,criterion):
 
 
 def _get_game_state(game,action):
-    transform= transforms.Compose([transforms.CenterCrop((150,600)),transforms.Resize((constant.IMG_ROWS ,constant.IMG_COLS)) ,transforms.Grayscale(num_output_channels=3),transforms.ToTensor()])
+    transform= transforms.Compose([transforms.CenterCrop((150,600)),transforms.Resize((constant.IMG_ROWS ,constant.IMG_COLS)) ,transforms.Grayscale(),transforms.ToTensor()])
     screen_shot,reward,terminal = game.get_state(action)
     return transform(screen_shot),torch.tensor(reward),torch.tensor(terminal)
 
@@ -116,7 +117,7 @@ def train(game, policy_net,target_net):
         state_t1[3]=  image_t1.clone()
 
                    
-        show(make_grid([state_t[0].cpu(),state_t[1].cpu(),state_t[2].cpu(),state_t[3].cpu(),state_t1[0].cpu(),state_t1[1].cpu(),state_t1[2].cpu(),state_t1[3].cpu()],nrow=4,padding=10))
+        #show(make_grid([state_t[0].cpu(),state_t[1].cpu(),state_t[2].cpu(),state_t[3].cpu(),state_t1[0].cpu(),state_t1[1].cpu(),state_t1[2].cpu(),state_t1[3].cpu()],nrow=4,padding=10))
  
         # store the transition in experience_replay_memory
         experience_replay_memory.append((state_t, action_t, reward_t, state_t1, terminal))
