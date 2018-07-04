@@ -38,7 +38,7 @@ class Deep_Q__network(nn.Module):
 
         self.fc2=nn.Sequential(
             nn.Linear(512,2),
-            nn.ReLU()
+            
         )
          
 
