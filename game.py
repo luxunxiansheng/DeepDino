@@ -15,8 +15,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC 
 from selenium.webdriver.common.by import By 
 
-import cv2  # opencv
-from torchvision import transforms
 
 from constant import Action
 import constant
@@ -36,7 +34,7 @@ class Game:
     _CAPA=DesiredCapabilities.CHROME
     _CAPA["pageLoadStrategy"]="none"       
     
-    transform= transforms.Compose([transforms.CenterCrop((150,600)),transforms.Resize((constant.IMG_ROWS ,constant.IMG_COLS)) ,transforms.Grayscale(),transforms.ToTensor()])
+    
 
     def __init__(self):
        
@@ -51,12 +49,11 @@ class Game:
 
         self._driver.execute_script("Runner.config.ACCELERATION=0")
         self._driver.execute_script(self._INIT_SCRIPT)
-       
-              
+      
         
 
     def get_state(self, action):
-        reward =1
+        reward =1.0
         is_over = False  # game over
         if action==Action.JUMP:
             self._press_up()
@@ -66,9 +63,9 @@ class Game:
         if self._get_crashed():
             # log the score when game is over
             self.restart()
-            reward = -1
+            reward = -1.0
             is_over = True
-        return self.transform(image), torch.tensor(reward), torch.tensor(is_over)  # return the Experience tuple
+        return image, reward, is_over  # return the Experience tuple
 
     def _get_crashed(self):
         return self._driver.execute_script("return Runner.instance_.crashed")
