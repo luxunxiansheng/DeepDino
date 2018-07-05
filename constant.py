@@ -1,23 +1,18 @@
 from enum import Enum
 
-loss_file_path = "/home/lb/workspace/Dino/objects/loss_df.csv"
-actions_file_path = "/home/lb/workspace/Dino/objects/actions_df.csv"
-q_value_file_path = "/home/lb/workspace/Dino/objects/q_values.csv"
-score_file_path = "/home/lb/workspace/Dino/objects/scores_df.csv"
-model_file_path = "/home/lb/workspace/Dino/model/dqn.pkl"
-
 
 GAMMA = 0.99  # decay rate of past observations original 0.99
 OBSERVATION = 150.  # timesteps to observe before training
-EXPLORE = 100000  # frames over which to anneal epsilon
 FINAL_EPSILON = 0.0001  # final value of epsilon
 INITIAL_EPSILON = 0.1  # starting value of epsilon
 REPLAY_MEMORY = 50000  # number of previous transitions to remember
+EXPLORE = 100000  # frames over which to anneal epsilon
 BATCH = 32  # size of minibatch
 FRAME_PER_ACTION = 1
 LEARNING_RATE = 0.00025
 IMG_ROWS, IMG_COLS = 84,84
-img_channels = 4  # We stack 4 frames
+IMG_STACK_SIZE = 4  # We stack 4 frames
+ACTION_SPACE=2
 UPDATETARGETNET=10000
 
 class Action(Enum):

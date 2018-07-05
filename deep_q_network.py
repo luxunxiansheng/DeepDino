@@ -8,13 +8,16 @@ from torch.nn import functional as F
 import constant
 
 
-class Deep_Q__network(nn.Module):
-    def __init__(self):
+class DQN(nn.Module):
+    def __init__(self,input_size,output_size):
         
-        super(Deep_Q__network, self).__init__()
+        super(DQN, self).__init__()
         
+        self._input_size  = input_size
+        self._output_size = output_size
+
         self.conv1 = nn.Sequential(
-            nn.Conv2d(4, 32, 8,stride=4),
+            nn.Conv2d(self._input_size, 32, 8,stride=4),
             nn.BatchNorm2d(32),
             nn.ReLU()
         )
@@ -32,12 +35,12 @@ class Deep_Q__network(nn.Module):
         )
 
         self.fc1=nn.Sequential(
-            nn.Linear(3136,512),
+            nn.Linear(7*7*64,512),
             nn.ReLU()
         )
 
         self.fc2=nn.Sequential(
-            nn.Linear(512,2),
+            nn.Linear(512,self._output_size),
             
         )
          
