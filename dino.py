@@ -12,8 +12,8 @@ from deep_q_network import DQN
 class DinoAgent:
     def __init__(self,device):
         self._device = device 
-        self._policy_net = DQN(input_size=constant.IMG.STACK_SIZE,output_size=constant.ACTION_SPACE).to(self._device)
-        self._target_net = DQN(input_size=constant.IMG.STACK_SIZE,output_size=constant.ACTION_SPACE).to(self._device)
+        self._policy_net = DQN(input_size=constant.IMG_STACK_SIZE,output_size=constant.ACTION_SPACE).to(self._device)
+        self._target_net = DQN(input_size=constant.IMG_STACK_SIZE,output_size=constant.ACTION_SPACE).to(self._device)
 
         self._target_net.load_state_dict(self._policy_net.state_dict())
         self._target_net.eval()
@@ -28,7 +28,7 @@ class DinoAgent:
         if random.random() <= epsilon:  
             action_index = random.randrange(constant.ACTION_SPACE)
         else:
-            q = self._policy_net(state)
+            q = self._policy_net(state.to(self._device))
             action_index = torch.argmax(q).tolist()
         if action_index == 0:
             action_t = Action.DO_NOTHING

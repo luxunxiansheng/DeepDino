@@ -54,8 +54,7 @@ def train(game,agent):
     image_t, _, terminal = _get_game_state(game, Action.DO_NOTHING)
     initial_state = torch.stack((image_t, image_t, image_t, image_t))
 
-    initial_state2 = torch.tensor([image_t, image_t, image_t, image_t])
-
+    
     state_t = initial_state.clone()
    
     while (True):  # endless running
