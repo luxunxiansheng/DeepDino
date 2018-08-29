@@ -47,9 +47,17 @@ class DinoAgent:
             state_t1 = samples[i][3]
             terminal = samples[i][4]
 
-             # td(0)
-            predicted_Q_sa_t1 = self._target_net(state_t1.to(self._device)).detach()
-            td_target[i][int(action_t)] = reward_t if terminal else reward_t + constant.GAMMA * torch.max(predicted_Q_sa_t1).tolist()
+             
+
+            
+            # predict the q value of the next state with the policy network
+            predicted_Q_sa_t1 = self._policy_net(state_t1.to(self._device)).detach()
+            # get the action which leads to the max q value of the next state
+            the_best_action = torch.argmax(predicted_Q_sa_t1).tolist()
+            # predict the max q value of the next sate with the target network
+            the_optimal_q_value_of_next_state=self._target_net(state_t1.to(self._device))[int(the_best_action)].detach()
+            # td(0) 
+            td_target[i][int(action_t)] = reward_t if terminal else reward_t + constant.GAMMA * the_optimal_q_value_of_next_state.tolist()
 
             predicted_Q_sa_t = self._policy_net(state_t.to(self._device))
             q_value[i][int(action_t)] = predicted_Q_sa_t[int(action_t)]
