@@ -49,8 +49,7 @@ class DinoAgent:
 
              # td(0)
             predicted_Q_sa_t1 = self._target_net(state_t1.to(self._device)).detach()
-            td_target[i][int(action_t)] = reward_t if terminal else reward_t + \
-            constant.GAMMA * torch.max(predicted_Q_sa_t1).tolist()
+            td_target[i][int(action_t)] = reward_t if terminal else reward_t + constant.GAMMA * torch.max(predicted_Q_sa_t1).tolist()
 
             predicted_Q_sa_t = self._policy_net(state_t.to(self._device))
             q_value[i][int(action_t)] = predicted_Q_sa_t[int(action_t)]
