@@ -13,8 +13,9 @@
             "debugOptions": [
                 "RedirectOutput",
                 "DebugStdLib"
-                               
-               
+            ],
+            "args": [
+                "True"               
             ]
         },
         {

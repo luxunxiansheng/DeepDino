@@ -36,7 +36,24 @@ class DinoAgent:
             action_t = Action.JUMP
         return action_t
 
-    def learn(self,samples):
+
+    
+    def _Double_DQN(self,state_t1):
+        # predict the q value of the next state with the policy network
+        predicted_Q_sa_t1 = self._policy_net(state_t1.to(self._device)).detach()
+        # get the action which leads to the max q value of the next state
+        the_best_action = torch.argmax(predicted_Q_sa_t1)
+        # predict the max q value of the next sate with the target network
+        the_optimal_q_value_of_next_state=self._target_net(state_t1.to(self._device))[int(the_best_action)].detach()
+ 
+        return the_optimal_q_value_of_next_state
+
+    def _DQN(self,state_t1):
+        predicted_Q_sa_t1 = self._target_net(state_t1.to(self._device)).detach()
+        the_optimal_q_value_of_next_state=torch.max(predicted_Q_sa_t1)
+        return the_optimal_q_value_of_next_state    
+
+    def learn(self,samples,isDQN):
         q_value   = torch.zeros(constant.BATCH, constant.ACTION_SPACE).to(self._device)
         td_target = torch.zeros(constant.BATCH, constant.ACTION_SPACE).to(self._device)
 
@@ -46,10 +63,11 @@ class DinoAgent:
             reward_t = samples[i][2]
             state_t1 = samples[i][3]
             terminal = samples[i][4]
-
-             # td(0)
-            predicted_Q_sa_t1 = self._target_net(state_t1.to(self._device)).detach()
-            td_target[i][int(action_t)] = reward_t if terminal else reward_t + constant.GAMMA * torch.max(predicted_Q_sa_t1).tolist()
+    
+            the_optimal_q_value_of_next_state= self._DQN(state_t1) if isDQN else self._Double_DQN(state_t1) 
+            
+            # td(0) 
+            td_target[i][int(action_t)] = reward_t if terminal else reward_t + constant.GAMMA * the_optimal_q_value_of_next_state.tolist()
 
             predicted_Q_sa_t = self._policy_net(state_t.to(self._device))
             q_value[i][int(action_t)] = predicted_Q_sa_t[int(action_t)]

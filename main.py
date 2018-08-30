@@ -6,6 +6,7 @@ import random
 import time
 from collections import deque
 from random import randint
+import argparse
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -22,6 +23,13 @@ from constant import Action
 from deep_q_network import DQN
 from game import Game
 from dino import DinoAgent
+
+
+parser = argparse.ArgumentParser(description='Dino')
+parser.add_argument('dqn', type=bool, default=True,help='dqn: True; double-dqn: False')
+
+args = parser.parse_args()
+
 
 loss_file_path = "/home/lb/workspace/Dino/objects/loss_df.csv"
 actions_file_path = "/home/lb/workspace/Dino/objects/actions_df.csv"
@@ -91,7 +99,7 @@ def train(game,agent):
 
         if(t > constant.OBSERVATION):
             state_batch = random.sample(experience_replay_memory, constant.BATCH)
-            loss = agent.learn(state_batch)
+            loss = agent.learn(state_batch,args.dqn)
 
             if t % 10 == 0:
                 print("t:", t,  "loss:", loss.tolist())
