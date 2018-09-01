@@ -5,42 +5,43 @@ import torch.optim as optim
 from torch.autograd import Variable
 from torch.nn import functional as F
 
-import constant
 
+class DeepMindNetwork(nn.Module):
+    '''
+    The convolution newtork proposed by Mnih at al(2015) 
+    in the paper "Playing Atari with Deep Reinforcement 
+    Learning"
+    '''
 
-class DQN(nn.Module):
-    def __init__(self,input_size,output_size):
+    def __init__(self,input_channels,output_size):
         
-        super(DQN, self).__init__()
+        super(DeepMindNetwork, self).__init__()
         
-        self._input_size  = input_size
+        self._input_channels = input_channels
         self._output_size = output_size
 
         self.conv1 = nn.Sequential(
-            nn.Conv2d(self._input_size, 32, 8,stride=4),
-            nn.BatchNorm2d(32),
+            nn.Conv2d(self._input_channels, 32, kernel_size=8,stride=4),
             nn.ReLU()
         )
 
         self.conv2 = nn.Sequential(
-            nn.Conv2d(32, 64, 4,stride=2),
-            nn.BatchNorm2d(64),
+            nn.Conv2d(32, 64, kernel_size=4,stride=2),
             nn.ReLU()
         )
         
         self.conv3 = nn.Sequential(
-            nn.Conv2d(64, 64, 3),
-            nn.BatchNorm2d(64),
+            nn.Conv2d(64, 64, kernel_size=3,stride=1),
             nn.ReLU()
         )
 
         self.fc1=nn.Sequential(
-            nn.Linear(7*7*64,512),
+            nn.Linear(7*7*64,256),
             nn.ReLU()
         )
 
         self.fc2=nn.Sequential(
-            nn.Linear(512,self._output_size),
+            nn.Linear(256,self._output_size),
             
         )
          

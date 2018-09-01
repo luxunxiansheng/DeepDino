@@ -17,8 +17,8 @@ from selenium.webdriver.common.by import By
 
 from PIL import Image
 
-from constant import Action
-import constant
+from utils.action import Action
+
 
 
 class Game:

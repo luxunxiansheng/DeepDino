@@ -13,10 +13,8 @@
             "debugOptions": [
                 "RedirectOutput",
                 "DebugStdLib"
-            ],
-            "args": [
-                "True"               
             ]
+   
         },
         {
             "name": "Python: Attach",
