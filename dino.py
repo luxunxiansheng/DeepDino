@@ -19,8 +19,7 @@ class DinoAgent:
         self._target_net.eval()
 
         self._criterion = nn.SmoothL1Loss()
-        self._optimizer = optim.RMSprop(self._policy_net.parameters(),
-                              lr=constant.LEARNING_RATE)
+        self._optimizer = optim.RMSprop(self._policy_net.parameters(),momentum=0.95,lr=constant.LEARNING_RATE)
  
  
     def get_action(self,epsilon, state):
