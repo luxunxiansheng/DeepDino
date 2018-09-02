@@ -1,4 +1,4 @@
-# #### BEGIN LICENSE BLOCK #####
+# BEGIN LICENSE BLOCK #####
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
 #
 # The contents of this file are subject to the Mozilla Public License Version
@@ -34,18 +34,25 @@
 # /
 
 
-import os
+import random
+from collections import deque
 
-import numpy as np
 import torch
 
 
-def gpu_id_with_max_memory():
-    os.system('nvidia-smi -q -d Memory|grep -A4 GPU|grep Free >tmp')
-    memory_available = [int(x.split()[2])
-                        for x in open('tmp', 'r').readlines()]
-    return np.argmax(memory_available)
+class Replay_Memory:
+    def __init__(self, capacity):
+        self._capacity = capacity
+        self._data = deque()
 
+    def push(self, experience):
+        self._data.append(experience)
+        if self.size() > self._capacity:
+            self._data.popleft()
 
-def get_device(config):
-    return torch.device(config['DEVICE']['type']+":" + config['DEVICE']['gpu_id']) if config['DEVICE']['type'] == 'cuda' else torch.device(config['DEVICE']['type'])
+    def sample(self, batch_size):
+        experience_batch = random.sample(self._data, batch_size)
+        return experience_batch
+
+    def size(self):
+        return len(self._data)

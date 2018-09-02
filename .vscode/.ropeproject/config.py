@@ -8,20 +8,20 @@ def set_prefs(prefs):
     # Specify which files and folders to ignore in the project.
     # Changes to ignored resources are not added to the history and
     # VCSs.  Also they are not returned in `Project.get_files()`.
-    # Note that ``?`` and ``*`` match all characters but slashes.
-    # '*.pyc': matches 'test.pyc' and 'pkg/test.pyc'
-    # 'mod*.pyc': matches 'test/mod1.pyc' but not 'mod/1.pyc'
+    # Note that ``?`` and ``#`` match all characters but slashes.
+    # '#.pyc': matches 'test.pyc' and 'pkg/test.pyc'
+    # 'mod#.pyc': matches 'test/mod1.pyc' but not 'mod/1.pyc'
     # '.svn': matches 'pkg/.svn' and all of its children
-    # 'build/*.o': matches 'build/lib.o' but not 'build/sub/lib.o'
-    # 'build//*.o': matches 'build/lib.o' and 'build/sub/lib.o'
-    prefs['ignored_resources'] = ['*.pyc', '*~', '.ropeproject',
+    # 'build/#.o': matches 'build/lib.o' but not 'build/sub/lib.o'
+    # 'build//#.o': matches 'build/lib.o' and 'build/sub/lib.o'
+    prefs['ignored_resources'] = ['#.pyc', '#~', '.ropeproject',
                                   '.hg', '.svn', '_svn', '.git', '.tox']
 
     # Specifies which files should be considered python files.  It is
     # useful when you have scripts inside your project.  Only files
     # ending with ``.py`` are considered to be python files by
     # default.
-    #prefs['python_files'] = ['*.py']
+    #prefs['python_files'] = ['#.py']
 
     # Custom source folders:  By default rope searches the project
     # for finding source folders (folders that should be searched

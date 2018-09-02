@@ -34,18 +34,17 @@
 # /
 
 
-import os
-
-import numpy as np
-import torch
+from enum import Enum
 
 
-def gpu_id_with_max_memory():
-    os.system('nvidia-smi -q -d Memory|grep -A4 GPU|grep Free >tmp')
-    memory_available = [int(x.split()[2])
-                        for x in open('tmp', 'r').readlines()]
-    return np.argmax(memory_available)
+class Action(Enum):
+    DO_NOTHING = 0
+    JUMP = 1
 
+    def __new__(cls, value):
+        member = object.__new__(cls)
+        member._value_ = value
+        return member
 
-def get_device(config):
-    return torch.device(config['DEVICE']['type']+":" + config['DEVICE']['gpu_id']) if config['DEVICE']['type'] == 'cuda' else torch.device(config['DEVICE']['type'])
+    def __int__(self):
+        return self.value
