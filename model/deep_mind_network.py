@@ -23,16 +23,19 @@ class DeepMindNetwork(nn.Module):
 
         self.conv1 = nn.Sequential(
             nn.Conv2d(self._input_channels, 32, kernel_size=8,stride=4),
+            nn.BatchNorm2d(32),
             nn.ReLU()
         )
 
         self.conv2 = nn.Sequential(
             nn.Conv2d(32, 64, kernel_size=4,stride=2),
+            nn.BatchNorm2d(64),
             nn.ReLU()
         )
         
         self.conv3 = nn.Sequential(
             nn.Conv2d(64, 64, kernel_size=3,stride=1),
+            nn.BatchNorm2d(64),
             nn.ReLU()
         )
 
@@ -45,9 +48,8 @@ class DeepMindNetwork(nn.Module):
             nn.Linear(256,self._output_size),
             
         )
-         
-
-        
+    
+           
     def forward(self, input):
         x = torch.transpose(input,0,1)
         x = self.conv1(x)
