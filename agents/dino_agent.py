@@ -46,6 +46,8 @@ from common.replay_memory import Replay_Memory
 from model.deep_mind_network import DeepMindNetwork
 from utils import torch_helper
 
+import matplotlib.pyplot as plt
+from  PIL  import Image
 
 class DinoAgent(object):
     def create(config):
@@ -135,7 +137,7 @@ class DQNAgent(DinoAgent):
 
             # td(0)
             # the_optimal_q_value_of_next_state.tolist()
-            td_target[i][int(action_t)] = reward_t if terminal else reward_t + self._gamma*the_optimal_q_value_of_next_state
+            td_target[i][int(action_t)] = reward_t if terminal else reward_t + self._gamma*the_optimal_q_value_of_next_state.tolist()
 
             predicted_Q_sa_t = self._policy_net(state_t.to(self._device))
             q_value[i][int(action_t)] = predicted_Q_sa_t[int(action_t)]
@@ -160,6 +162,13 @@ class DQNAgent(DinoAgent):
         the_most_most_recent_frames[-1] = next_frame
         return the_most_most_recent_frames
 
+
+    def _show(self,img):
+        npimg = img.numpy()
+        plt.imshow(np.transpose(npimg, (1, 2, 0)))
+        plt.show()
+        plt.close()
+
     def train(self, game):
         t = 0
         epsilon = self._init_epsilon
@@ -179,7 +188,7 @@ class DQNAgent(DinoAgent):
 
             # choose an action epsilon gredy
             if t % self._frame_per_action == 0:  # parameter to skip frames for actions
-                action_t = self._get_action(epsilon, state_t)
+                action_t = self._get_action(epsilon, the_most_recent_state_stack)
 
             # We reduced the epsilon (exploration parameter) gradually
             if epsilon > self._final_epsilon:
