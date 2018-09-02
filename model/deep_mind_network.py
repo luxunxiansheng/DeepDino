@@ -11,6 +11,7 @@ class DeepMindNetwork(nn.Module):
     The convolution newtork proposed by Mnih at al(2015) 
     in the paper "Playing Atari with Deep Reinforcement 
     Learning"
+    
     '''
 
     def __init__(self,input_channels,output_size):
