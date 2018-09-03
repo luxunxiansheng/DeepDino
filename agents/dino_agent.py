@@ -40,6 +40,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torchvision import transforms
+import torchvision
 
 from common.action import Action
 from common.replay_memory import Replay_Memory
@@ -47,7 +48,8 @@ from model.deep_mind_network import DeepMindNetwork
 from utils import torch_helper
 
 import matplotlib.pyplot as plt
-from  PIL  import Image
+from PIL import Image
+import numpy as np
 
 class DinoAgent(object):
     def create(config):
@@ -163,12 +165,16 @@ class DQNAgent(DinoAgent):
         return the_most_most_recent_frames
 
 
-    def _show(self,img):
-        npimg = img.numpy()
-        plt.imshow(np.transpose(npimg, (1, 2, 0)))
-        plt.show()
-        plt.close()
+    def _show(self,img,img2):
+        npimg1 = img.numpy()
+        npimg2 = img2.numpy()
 
+        plt.subplot(211)
+        plt.imshow(np.transpose(npimg1, (1, 2, 0)))
+        plt.subplot(212)
+        plt.imshow(np.transpose(npimg2, (1, 2, 0)))
+        plt.show()
+        
     def train(self, game):
         t = 0
         epsilon = self._init_epsilon
@@ -199,17 +205,24 @@ class DQNAgent(DinoAgent):
 
             the_most_most_recent_state_stack = self._get_most_recent_states(the_most_recent_state_stack, state_t1)
 
+            """ 
+            grid_img = torchvision.utils.make_grid(the_most_recent_state_stack, 4, padding=10)
+            grid_img2 = torchvision.utils.make_grid(the_most_most_recent_state_stack, 4, padding=10)
+            self._show(grid_img,grid_img2) 
+            
+            """
+
             # store the transition in experience_replay_memory
             replay_memory.push((the_most_recent_state_stack, action_t, reward_t, the_most_most_recent_state_stack, terminal))
 
-            if(t > self._observations):
+            if t > self._observations:
                 experience_batch = replay_memory.sample(self._batch_size)
                 loss = self._learn(experience_batch)
 
             if t > self._observations and t % 10 == 0:
                 print("t:", t,  "loss:", loss.tolist())
 
-            if t % self._update_target_interval == 0:
+            if  t > self._observations and  t % self._update_target_interval == 0:
                 self._update_target_net()
 
             if terminal:

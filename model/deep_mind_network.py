@@ -76,12 +76,12 @@ class DeepMindNetwork(nn.Module):
         )
 
         self.fc1 = nn.Sequential(
-            nn.Linear(7*7*64, 256),
+            nn.Linear(7*7*64, 512),
             nn.ReLU()
         )
 
         self.fc2 = nn.Sequential(
-            nn.Linear(256, self._output_size),
+            nn.Linear(512, self._output_size),
 
         )
 
