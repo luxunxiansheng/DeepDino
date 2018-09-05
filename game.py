@@ -37,7 +37,9 @@
 import base64
 import os
 from io import BytesIO
+from pathlib import Path
 
+import pandas as pd
 import torch
 from PIL import Image
 from selenium import webdriver
@@ -49,12 +51,11 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 from common.action import Action
+from utils.logger import Logger
 
 
-class Game:
+class Game(object):
 
-    _GAME_URL = "http://apps.thecodepost.org/trex/trex.html"
-    _CHROME_DRIVER_PATH = "/home/lb/workspace/chromedriver"
     _INIT_SCRIPT = "document.getElementsByClassName('runner-canvas')[0].id = 'runner-canvas'"
 
     # get image from canvas
@@ -64,13 +65,13 @@ class Game:
     _CAPA = DesiredCapabilities.CHROME
     _CAPA["pageLoadStrategy"] = "none"
 
-    def __init__(self):
+    def __init__(self, config):
 
-        self._driver = webdriver.Chrome(executable_path=self._CHROME_DRIVER_PATH, desired_capabilities=self._CAPA)
+        self._driver = webdriver.Chrome(executable_path=os.path.join(Path(__file__).parent, config['GAME'].get('chrome_driver_path')), desired_capabilities=self._CAPA)
         self._driver.set_window_position(x=-10, y=0)
 
         self._wait = WebDriverWait(self._driver, 20)
-        self._driver.get(self._GAME_URL)
+        self._driver.get(config['GAME'].get('game_url'))
 
         self._wait.until(EC.presence_of_all_elements_located((By.ID, "socialbutts")))
 
@@ -78,6 +79,7 @@ class Game:
         self._driver.execute_script(self._INIT_SCRIPT)
 
     def get_state(self, action):
+        score = self._get_score()
         reward = 1.0
         is_over = False  # game over
         if action == Action.JUMP:
@@ -87,6 +89,8 @@ class Game:
 
         if self._get_crashed():
             # log the score when game is over
+            Logger.get_instance().log_game_score(score)
+
             self.restart()
             reward = -1.0
             is_over = True

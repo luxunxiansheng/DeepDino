@@ -34,36 +34,27 @@
 # /
 
 
-from configparser import ConfigParser
-
 import torch
 
 from agents import dino_agent
 from game import Game
-from utils import torch_helper
-
-# parser config
-config_file = "./config.ini"
-config = ConfigParser()
-config.read(config_file)
-
-if torch.cuda.is_available():
-    config['DEVICE']['type'] = 'cuda'
-    config['DEVICE']['gpu_id'] = str(torch_helper.gpu_id_with_max_memory())
-
-else:
-    config['DEVICE']['type'] = 'cpu'
+from utils.logger import Logger
+from utils.utilis import Utilis
 
 
 def main():
 
-    working_agent = dino_agent.DinoAgent.create(config)
+    cfg = Utilis.config()
+    logger = Logger().get_instance()
+    logger.init(cfg)
 
-    game = Game()
+    working_agent = dino_agent.DinoAgent.create(cfg)
+
+    game = Game(cfg)
 
     try:
         working_agent.train(game)
-    except StopIteration:
+    finally:
         game.end()
 
 

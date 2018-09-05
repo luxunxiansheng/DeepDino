@@ -48,23 +48,19 @@ from common.action import Action
 from common.replay_memory import Replay_Memory
 from agents.dino_agent import DinoAgent
 from model.deep_mind_network import DeepMindNetwork
-from utils import torch_helper
+from utils.logger import Logger
 
 
 class DQNAgent(DinoAgent):
     def __init__(self, config):
-        self._config = config
-
-        self._device = torch_helper.get_device(config)
-        self._image_stack_size = config['DQN'].getint('img_stack_size')
-        self._action_space = config['DQN'].getint('action_space')
-        self._momentum = config['DQN'].getfloat('momentum')
-        self._lr = config['DQN'].getfloat('learning_rate')
-        self._img_rows = config['DQN'].getint('img_rows')
-        self._img_columns = config['DQN'].getint('img_columns')
+        
+        super(DQNAgent,self).__init__(config)
+       
         self._batch_size = config['DQN'].getint('batch')
         self._isDQN = config['DQN'].getboolean('dqn')
         self._gamma = config['DQN'].getfloat('gamma')
+        self._momentum = config['DQN'].getfloat('momentum')
+        self._lr = config['DQN'].getfloat('learning_rate')
         self._final_epsilon = config['DQN'].getfloat('final_epsilon')
         self._init_epsilon = config['DQN'].getfloat('init_epsilon')
         self._explore = config['DQN'].getint('explore')
@@ -72,6 +68,8 @@ class DQNAgent(DinoAgent):
         self._update_target_interval = config['DQN'].getint('update_target_interval')
         self._frame_per_action = config['DQN'].getint('frame_per_action')
         self._observations = config['DQN'].getint('observations')
+        
+        self._q_value_log_path= config['DQN'].get('q_value_file_path')
 
         self._policy_net = DeepMindNetwork(input_channels=self._image_stack_size, output_size=self._action_space).to(self._device)
         self._target_net = DeepMindNetwork(input_channels=self._image_stack_size, output_size=self._action_space).to(self._device)
@@ -130,7 +128,6 @@ class DQNAgent(DinoAgent):
             the_optimal_q_value_of_next_state = self._DQN(state_t1) if self._isDQN else self._Double_DQN(state_t1)
 
             # td(0)
-            # the_optimal_q_value_of_next_state.tolist()
             td_target[i][int(action_t)] = reward_t if terminal else reward_t + self._gamma*the_optimal_q_value_of_next_state.tolist()
 
             predicted_Q_sa_t = self._policy_net(state_t.to(self._device))
@@ -213,8 +210,11 @@ class DQNAgent(DinoAgent):
                 experience_batch = replay_memory.sample(self._batch_size)
                 loss = self._learn(experience_batch)
 
-            if t > self._observations and t % 10 == 0:
-                print("t:", t,  "loss:", loss.tolist())
+            if t > self._observations and t % 100 == 0:
+                print("t:", t, "loss:", loss.tolist())
+                game.pause()
+                Logger.get_instance().dump_log()
+                game.resume()
 
             if t > self._observations and t % self._update_target_interval == 0:
                 self._update_target_net()
