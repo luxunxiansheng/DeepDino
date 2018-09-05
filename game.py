@@ -80,7 +80,7 @@ class Game(object):
 
     def get_state(self, action):
         score = self._get_score()
-        reward = 1.0
+        reward = 0.1
         is_over = False  # game over
         if action == Action.JUMP:
             self._press_up()
