@@ -3,6 +3,5 @@ model/__pycache__/*
 agents/__pycache__/*
 utils/__pycache__/*
 ./__pycache__/*
-log/scores_df.csv
-log/dqn/q_values.csv
 agents/__pycache__/*
+*.csv

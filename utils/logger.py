@@ -35,7 +35,9 @@
 
 
 import os
+import time
 from pathlib import Path
+
 
 import pandas as pd
 
@@ -53,11 +55,16 @@ class Logger(object):
 
     def init(self, config):  # Explictly init the logger anyhow
         
+        timestampTime = time.strftime("%H%M%S")
+        timestampDate = time.strftime("%Y%m%d")
+        timestampLaunch = timestampDate + '-' + timestampTime
+
+
         project_root_dir=Path(__file__).parents[1]
-        self._score_file = os.path.join(project_root_dir,config["GAME"].get("score_log_file_path"))
+        self._score_file = os.path.join(project_root_dir,config["GAME"].get("score_log_file_path"),timestampLaunch+"-score.csv")
         self._score_log = pd.read_csv(self._score_file) if os.path.isfile(self._score_file) else pd.DataFrame(columns=['scores'])
 
-        self._q_value_file =os.path.join(project_root_dir,config['DQN'].get('q_value_log_file_path'))
+        self._q_value_file =os.path.join(project_root_dir,config['DQN'].get('q_value_log_file_path'),timestampLaunch+"-qvalue.csv")
         self._q_values_log = pd.read_csv(self._q_value_file) if os.path.isfile(self._q_value_file) else pd.DataFrame(columns=['qvalues'])
 
     def __init__(self):
