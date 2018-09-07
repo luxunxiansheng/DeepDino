@@ -1,16 +1,18 @@
 import pandas as pd
+import matplotlib.pyplot as plt
+
 
 class Visual(object):
-       
+     
     
     @staticmethod
     def visual_mean_scores(score_file_path):
         start = 0
         interval = 10        
         scores_df = pd.read_csv(score_file_path)
-        mean_scores = pd.DataFrame(columns=['score'])
+        mean_scores = pd.DataFrame(columns=['Scores'])
         while interval <= len(scores_df):
-            mean_scores.loc[len(mean_scores)] = scores_df.loc[start:interval].mean()['scores']
+            mean_scores.loc[len(mean_scores)] = scores_df.loc[start:interval].mean()['Scores']
             start = interval
             interval = interval + 10
         
@@ -23,10 +25,11 @@ class Visual(object):
         scores_df = pd.read_csv(score_file_path)
         max_scores = pd.DataFrame(columns=['max_score'])
         while interval <= len(scores_df):
-            max_scores.loc[len(max_scores)] = scores_df.loc[start:interval].max()['scores']
+            max_scores.loc[len(max_scores)] = scores_df.loc[start:interval].max()['Scores']
             start = interval
             interval = interval + 10
            
+         
         max_scores.plot()   
 
     @staticmethod

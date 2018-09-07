@@ -53,29 +53,32 @@ class Logger(object):
 
         return Logger._instance
 
-    def init(self, config):  # Explictly init the logger anyhow
+    def craete_log_file(self, config):  # Explictly init the logger anyhow
         
         timestampTime = time.strftime("%H%M%S")
         timestampDate = time.strftime("%Y%m%d")
         timestampLaunch = timestampDate + '-' + timestampTime
 
-
         project_root_dir=Path(__file__).parents[1]
-        self._score_file = os.path.join(project_root_dir,config["GAME"].get("score_log_file_path"),timestampLaunch+"-score.csv")
-        self._score_log = pd.read_csv(self._score_file) if os.path.isfile(self._score_file) else pd.DataFrame(columns=['scores'])
-
-        self._q_value_file =os.path.join(project_root_dir,config['DQN'].get('q_value_log_file_path'),timestampLaunch+"-qvalue.csv")
-        self._q_values_log = pd.read_csv(self._q_value_file) if os.path.isfile(self._q_value_file) else pd.DataFrame(columns=['qvalues'])
-
+        self._score_file = os.path.join(project_root_dir, config["GAME"].get("score_log_file_path"), timestampLaunch + "-score.csv")
+        
+        
     def __init__(self):
         if Logger._instance != None:
             raise Exception("Logger is a Singleon")
         else:
             Logger._instance = self
 
+        self._score_log = pd.DataFrame(columns=['Scores'])    
+
     def log_game_score(self, score):
         self._score_log.loc[len(self._score_log)] = score
 
     def dump_log(self):
-        self._score_log.to_csv(self._score_file, index=False)
-        self._q_values_log.to_csv(self._q_value_file, index=False)
+        if self._score_file!=None:
+            self._score_log.to_csv(self._score_file, index=False)
+        else:
+            raise Exception("No Log files exist")
+
+    def get_lastest_score_log(self):
+        return self._score_file    

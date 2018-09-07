@@ -71,8 +71,8 @@ class DQNAgent(DinoAgent):
         
         self._q_value_log_path= config['DQN'].get('q_value_file_path')
 
-        self._policy_net = DeepMindNetwork(input_channels=self._image_stack_size, output_size=self._action_space).to(self._device)
-        self._target_net = DeepMindNetwork(input_channels=self._image_stack_size, output_size=self._action_space).to(self._device)
+        self._policy_net = DeepMindNetwork(input_channels=self._image_stack_size, output_size=self._action_space).cuda()
+        self._target_net = DeepMindNetwork(input_channels=self._image_stack_size, output_size=self._action_space).cuda()
         self._target_net.load_state_dict(self._policy_net.state_dict())
         self._target_net.eval()
 
@@ -80,12 +80,11 @@ class DQNAgent(DinoAgent):
         self._optimizer = optim.RMSprop(self._policy_net.parameters(), momentum=self._momentum, lr=self._lr)
 
     def _get_action(self, epsilon, state):
-
         action_t = Action.DO_NOTHING
         if random.random() <= epsilon:
             action_index = random.randrange(self._action_space)
         else:
-            q = self._policy_net(state.to(self._device))
+            q = self._policy_net(state.cuda())
             action_index = torch.argmax(q).tolist()
         if action_index == 0:
             action_t = Action.DO_NOTHING
@@ -95,16 +94,16 @@ class DQNAgent(DinoAgent):
 
     def _Double_DQN(self, state_t1):
         # predict the q value of the next state with the policy network
-        predicted_Q_sa_t1 = self._policy_net(state_t1.to(self._device)).detach()
+        predicted_Q_sa_t1 = self._policy_net(state_t1.cuda()).detach()
         # get the action which leads to the max q value of the next state
         the_best_action = torch.argmax(predicted_Q_sa_t1)
         # predict the max q value of the next sate with the target network
-        the_optimal_q_value_of_next_state = self._target_net(state_t1.to(self._device))[int(the_best_action)].detach()
+        the_optimal_q_value_of_next_state = self._target_net(state_t1.cuda())[int(the_best_action)].detach()
 
         return the_optimal_q_value_of_next_state
 
     def _DQN(self, state_t1):
-        predicted_Q_sa_t1 = self._target_net(state_t1.to(self._device)).detach()
+        predicted_Q_sa_t1 = self._target_net(state_t1.cuda()).detach()
         the_optimal_q_value_of_next_state = torch.max(predicted_Q_sa_t1)
         return the_optimal_q_value_of_next_state
 
@@ -115,8 +114,8 @@ class DQNAgent(DinoAgent):
 
     def _learn(self, samples):
 
-        q_value = torch.zeros(self._batch_size, self._action_space).to(self._device)
-        td_target = torch.zeros(self._batch_size, self._action_space).to(self._device)
+        q_value = torch.zeros(self._batch_size, self._action_space).cuda()
+        td_target = torch.zeros(self._batch_size, self._action_space).cuda()
 
         for i in range(0, self._batch_size):
             state_t = samples[i][0]
@@ -130,7 +129,7 @@ class DQNAgent(DinoAgent):
             # td(0)
             td_target[i][int(action_t)] = reward_t if terminal else reward_t + self._gamma*the_optimal_q_value_of_next_state.tolist()
 
-            predicted_Q_sa_t = self._policy_net(state_t.to(self._device))
+            predicted_Q_sa_t = self._policy_net(state_t.cuda())
             q_value[i][int(action_t)] = predicted_Q_sa_t[int(action_t)]
 
         loss = self._criterion(q_value, td_target)
@@ -220,7 +219,7 @@ class DQNAgent(DinoAgent):
                 self._update_target_net()
 
             if terminal:
-                state_t = initial_state_stack.clone()
+                the_most_recent_state_stack = initial_state_stack
             else:
                 the_most_recent_state_stack = the_most_most_recent_state_stack
 

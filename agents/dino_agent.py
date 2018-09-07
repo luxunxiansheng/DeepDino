@@ -61,7 +61,6 @@ class DinoAgent(object):
 
     def __init__(self, config):
         self._config = config
-        self._device = Utilis.get_device(config)
         self._image_stack_size = config['GLOBAL'].getint('img_stack_size')
         self._action_space = config['GLOBAL'].getint('action_space')
         self._img_rows = config['GLOBAL'].getint('img_rows')

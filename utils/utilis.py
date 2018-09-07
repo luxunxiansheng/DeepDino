@@ -52,10 +52,7 @@ class Utilis(object):
         os.system('rm ./dump')
         return np.argmax(memory_available)
 
-    @staticmethod
-    def get_device(config):
-        return torch.device(config['DEVICE']['type']+":" + config['DEVICE']['gpu_id']) if config['DEVICE']['type'] == 'cuda' else torch.device(config['DEVICE']['type'])
-
+    
     @staticmethod
     def config():
         # parser config
@@ -65,12 +62,5 @@ class Utilis(object):
 
         config.read(os.path.join(Path(__file__).parents[1], config_file))
 
-        # setup the GPU/CPU device
-        if torch.cuda.is_available():
-            config['DEVICE']['type'] = 'cuda'
-            config['DEVICE']['gpu_id'] = str(Utilis.gpu_id_with_max_memory())
-
-        else:
-            config['DEVICE']['type'] = 'cpu'
-
+        
         return config

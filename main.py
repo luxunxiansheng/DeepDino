@@ -40,22 +40,39 @@ from agents import dino_agent
 from game import Game
 from utils.logger import Logger
 from utils.utilis import Utilis
+from utils.visualize import Visual
 
 
 def main():
+            
+    run()
+    #visual()
 
+
+def run():
+    # prepare the Log for recording the RL procedure  
     cfg = Utilis.config()
-    logger = Logger().get_instance()
-    logger.init(cfg)
+    logger = Logger.get_instance()
+    logger.craete_log_file(cfg)
+
+    # setup the GPU/CPU device
+    if torch.cuda.is_available():
+       torch.cuda.set_device(int(Utilis.gpu_id_with_max_memory()))
 
     working_agent = dino_agent.DinoAgent.create(cfg)
-
     game = Game(cfg)
-
     try:
         working_agent.train(game)
     finally:
         game.end()
+          
+
+def visual():
+    
+    score_file_name="/home/lb/workspace/Dino/log/20180906-185056-score.csv"
+
+    Visual.visual_mean_scores(score_file_name) 
+
 
 
 if __name__ == '__main__':
