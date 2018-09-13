@@ -1,37 +1,37 @@
 # #### BEGIN LICENSE BLOCK #####
- # Version: MPL 1.1/GPL 2.0/LGPL 2.1
- #
- # The contents of this file are subject to the Mozilla Public License Version
- # 1.1 (the "License"); you may not use this file except in compliance with
- # the License. You may obtain a copy of the License at
- # http://www.mozilla.org/MPL/
- #
- # Software distributed under the License is distributed on an "AS IS" basis,
- # WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
- # for the specific language governing rights and limitations under the
- # License.
- #
- #   
- # Contributor(s): 
- # 
- #    Bin.Li (ornot2008@yahoo.com) 
- #
- #
- # Alternatively, the contents of this file may be used under the terms of
- # either the GNU General Public License Version 2 or later (the "GPL"), or
- # the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
- # in which case the provisions of the GPL or the LGPL are applicable instead
- # of those above. If you wish to allow use of your version of this file only
- # under the terms of either the GPL or the LGPL, and not to allow others to
- # use your version of this file under the terms of the MPL, indicate your
- # decision by deleting the provisions above and replace them with the notice
- # and other provisions required by the GPL or the LGPL. If you do not delete
- # the provisions above, a recipient may use your version of this file under
- # the terms of any one of the MPL, the GPL or the LGPL.
- #
- # #### END LICENSE BLOCK #####
- #
- #/  
+# Version: MPL 1.1/GPL 2.0/LGPL 2.1
+#
+# The contents of this file are subject to the Mozilla Public License Version
+# 1.1 (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at
+# http://www.mozilla.org/MPL/
+#
+# Software distributed under the License is distributed on an "AS IS" basis,
+# WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
+# for the specific language governing rights and limitations under the
+# License.
+#
+#
+# Contributor(s):
+#
+#    Bin.Li (ornot2008@yahoo.com)
+#
+#
+# Alternatively, the contents of this file may be used under the terms of
+# either the GNU General Public License Version 2 or later (the "GPL"), or
+# the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
+# in which case the provisions of the GPL or the LGPL are applicable instead
+# of those above. If you wish to allow use of your version of this file only
+# under the terms of either the GPL or the LGPL, and not to allow others to
+# use your version of this file under the terms of the MPL, indicate your
+# decision by deleting the provisions above and replace them with the notice
+# and other provisions required by the GPL or the LGPL. If you do not delete
+# the provisions above, a recipient may use your version of this file under
+# the terms of any one of the MPL, the GPL or the LGPL.
+#
+# #### END LICENSE BLOCK #####
+#
+# /
 
 import random
 
@@ -44,18 +44,18 @@ import torchvision
 from PIL import Image
 from torchvision import transforms
 
+from agents.dino_agent import DinoAgent
 from common.action import Action
 from common.replay_memory import Replay_Memory
-from agents.dino_agent import DinoAgent
 from model.deep_mind_network import DeepMindNetwork
 from utils.logger import Logger
 
 
 class DQNAgent(DinoAgent):
     def __init__(self, config):
-        
-        super(DQNAgent,self).__init__(config)
-       
+
+        super(DQNAgent, self).__init__(config)
+
         self._batch_size = config['DQN'].getint('batch')
         self._isDQN = config['DQN'].getboolean('dqn')
         self._gamma = config['DQN'].getfloat('gamma')
@@ -68,9 +68,8 @@ class DQNAgent(DinoAgent):
         self._update_target_interval = config['DQN'].getint('update_target_interval')
         self._frame_per_action = config['DQN'].getint('frame_per_action')
         self._observations = config['DQN'].getint('observations')
-        
-        
-        self._q_value_log_path= config['DQN'].get('q_value_file_path')
+
+        self._q_value_log_path = config['DQN'].get('q_value_file_path')
 
         self._policy_net = DeepMindNetwork(input_channels=self._image_stack_size, output_size=self._action_space).cuda()
         self._target_net = DeepMindNetwork(input_channels=self._image_stack_size, output_size=self._action_space).cuda()
@@ -110,8 +109,8 @@ class DQNAgent(DinoAgent):
 
     def _get_game_state(self, game, action):
         transform = transforms.Compose([transforms.CenterCrop((150, 600)), transforms.Resize((self._img_rows, self._img_columns)), transforms.Grayscale(), transforms.ToTensor()])
-        screen_shot, reward, terminal,score = game.get_state(action)
-        return transform(screen_shot), torch.tensor(reward), torch.tensor(terminal),score
+        screen_shot, reward, terminal, score = game.get_state(action)
+        return transform(screen_shot), torch.tensor(reward), torch.tensor(terminal), score
 
     def _learn(self, samples):
 
@@ -166,13 +165,13 @@ class DQNAgent(DinoAgent):
     def train(self, game):
         t = 0
         epoch = 0
-        loss=torch.FloatTensor([0])
+        loss = torch.FloatTensor([0])
         epsilon = self._init_epsilon
 
         replay_memory = Replay_Memory(self._replay_memory_capacity)
 
         # init the start state
-        state_t, _, _,_ = self._get_game_state(game, Action.DO_NOTHING)
+        state_t, _, _, _ = self._get_game_state(game, Action.DO_NOTHING)
 
         # the first state stack containes the first 4 frames
         initial_state_stack = torch.stack((state_t, state_t, state_t, state_t))
@@ -183,7 +182,6 @@ class DQNAgent(DinoAgent):
             loss = 0
             reward_t = 0
             action_t = Action.DO_NOTHING
-            
 
             # choose an action epsilon greedy
             if t % self._frame_per_action == 0:  # parameter to skip frames for actions
@@ -194,7 +192,7 @@ class DQNAgent(DinoAgent):
                 epsilon -= (self._init_epsilon-self._final_epsilon) / self._explore
 
             # run the selected action and observed next state and reward
-            state_t1, reward_t, terminal,score_t = self._get_game_state(game, action_t)
+            state_t1, reward_t, terminal, score_t = self._get_game_state(game, action_t)
 
             # assemble the next state stack which contains the lastest 3 states and the next state
             the_most_most_recent_state_stack = self._get_most_recent_states(the_most_recent_state_stack, state_t1)
@@ -215,21 +213,21 @@ class DQNAgent(DinoAgent):
 
             if t > self._observations and t % self._log_interval == 0:
                 print("t:", t, "loss:", loss.tolist())
-                game.pause()
-                Logger.get_instance().dump_log()
-                game.resume()
+               
 
             if t > self._observations and t % self._update_target_interval == 0:
                 self._update_target_net()
 
             if terminal:
                 the_most_recent_state_stack = initial_state_stack
-                
-                if t > self._observations:
-                    log_entry = Logger.LOG_ENTRY(time_step=t, episode=epoch,score=score_t,epoch_loss=loss.tolist())
-                    Logger.get_instance().log_game(log_entry)
 
-                epoch=epoch+1
+                if t > self._observations:
+                    info = {'score': score_t, 'loss': loss.tolist()}
+                    for tag, value in info.items():
+                        Logger.get_instance().scalar_summary(tag,value,epoch)
+            
+
+                epoch = epoch+1
             else:
                 the_most_recent_state_stack = the_most_most_recent_state_stack
 

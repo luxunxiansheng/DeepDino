@@ -51,7 +51,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 from common.action import Action
-from utils.logger import Logger
 
 
 class Game(object):
@@ -78,9 +77,12 @@ class Game(object):
         self._driver.execute_script("Runner.config.ACCELERATION=0")
         self._driver.execute_script(self._INIT_SCRIPT)
 
+        self._reward_if_well_done = config['GAME'].getfloat("reward_if_well_done")
+        self._reward_if_crash=config['GAME'].getfloat("reward_if_crash")
+
     def get_state(self, action):
         score = self._get_score()
-        reward = 0.01
+        reward = self._reward_if_well_done
         is_over = False  # game over
         if action == Action.JUMP:
             self._press_up()
@@ -89,7 +91,7 @@ class Game(object):
 
         if self._get_crashed():
             self.restart()
-            reward = -1.0
+            reward = self._reward_if_crash
             is_over = True
         return image, reward, is_over,score  # return the Experience tuple
 
