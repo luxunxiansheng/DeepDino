@@ -69,6 +69,7 @@ class DQNAgent(DinoAgent):
         self._frame_per_action = config['DQN'].getint('frame_per_action')
         self._observations = config['DQN'].getint('observations')
         
+        
         self._q_value_log_path= config['DQN'].get('q_value_file_path')
 
         self._policy_net = DeepMindNetwork(input_channels=self._image_stack_size, output_size=self._action_space).cuda()
@@ -109,8 +110,8 @@ class DQNAgent(DinoAgent):
 
     def _get_game_state(self, game, action):
         transform = transforms.Compose([transforms.CenterCrop((150, 600)), transforms.Resize((self._img_rows, self._img_columns)), transforms.Grayscale(), transforms.ToTensor()])
-        screen_shot, reward, terminal = game.get_state(action)
-        return transform(screen_shot), torch.tensor(reward), torch.tensor(terminal)
+        screen_shot, reward, terminal,score = game.get_state(action)
+        return transform(screen_shot), torch.tensor(reward), torch.tensor(terminal),score
 
     def _learn(self, samples):
 
@@ -164,12 +165,14 @@ class DQNAgent(DinoAgent):
 
     def train(self, game):
         t = 0
+        epoch = 0
+        loss=torch.FloatTensor([0])
         epsilon = self._init_epsilon
 
         replay_memory = Replay_Memory(self._replay_memory_capacity)
 
         # init the start state
-        state_t, _, _ = self._get_game_state(game, Action.DO_NOTHING)
+        state_t, _, _,_ = self._get_game_state(game, Action.DO_NOTHING)
 
         # the first state stack containes the first 4 frames
         initial_state_stack = torch.stack((state_t, state_t, state_t, state_t))
@@ -180,6 +183,7 @@ class DQNAgent(DinoAgent):
             loss = 0
             reward_t = 0
             action_t = Action.DO_NOTHING
+            
 
             # choose an action epsilon greedy
             if t % self._frame_per_action == 0:  # parameter to skip frames for actions
@@ -190,7 +194,7 @@ class DQNAgent(DinoAgent):
                 epsilon -= (self._init_epsilon-self._final_epsilon) / self._explore
 
             # run the selected action and observed next state and reward
-            state_t1, reward_t, terminal = self._get_game_state(game, action_t)
+            state_t1, reward_t, terminal,score_t = self._get_game_state(game, action_t)
 
             # assemble the next state stack which contains the lastest 3 states and the next state
             the_most_most_recent_state_stack = self._get_most_recent_states(the_most_recent_state_stack, state_t1)
@@ -209,7 +213,7 @@ class DQNAgent(DinoAgent):
                 experience_batch = replay_memory.sample(self._batch_size)
                 loss = self._learn(experience_batch)
 
-            if t > self._observations and t % 100 == 0:
+            if t > self._observations and t % self._log_interval == 0:
                 print("t:", t, "loss:", loss.tolist())
                 game.pause()
                 Logger.get_instance().dump_log()
@@ -220,6 +224,12 @@ class DQNAgent(DinoAgent):
 
             if terminal:
                 the_most_recent_state_stack = initial_state_stack
+                
+                if t > self._observations:
+                    log_entry = Logger.LOG_ENTRY(time_step=t, episode=epoch,score=score_t,epoch_loss=loss.tolist())
+                    Logger.get_instance().log_game(log_entry)
+
+                epoch=epoch+1
             else:
                 the_most_recent_state_stack = the_most_most_recent_state_stack
 

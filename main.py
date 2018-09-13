@@ -53,7 +53,7 @@ def run():
     # prepare the Log for recording the RL procedure  
     cfg = Utilis.config()
     logger = Logger.get_instance()
-    logger.craete_log_file(cfg)
+    logger.create_log_file(cfg)
 
     # setup the GPU/CPU device
     if torch.cuda.is_available():
@@ -69,7 +69,7 @@ def run():
 
 def visual():
     
-    score_file_name="/home/lb/workspace/Dino/log/20180906-185056-score.csv"
+    score_file_name="/home/lb/workspace/Dino/log/20180910-120035-score.csv"
 
     Visual.visual_mean_scores(score_file_name) 
 

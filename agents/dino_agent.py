@@ -65,3 +65,4 @@ class DinoAgent(object):
         self._action_space = config['GLOBAL'].getint('action_space')
         self._img_rows = config['GLOBAL'].getint('img_rows')
         self._img_columns = config['GLOBAL'].getint('img_columns')
+        self._log_interval= config['GLOBAL'].getint('log_interval')

@@ -80,7 +80,7 @@ class Game(object):
 
     def get_state(self, action):
         score = self._get_score()
-        reward = 0.1
+        reward = 0.01
         is_over = False  # game over
         if action == Action.JUMP:
             self._press_up()
@@ -88,13 +88,10 @@ class Game(object):
         image = self._grab_screen()
 
         if self._get_crashed():
-            # log the score when game is over
-            Logger.get_instance().log_game_score(score)
-
             self.restart()
             reward = -1.0
             is_over = True
-        return image, reward, is_over  # return the Experience tuple
+        return image, reward, is_over,score  # return the Experience tuple
 
     def _get_crashed(self):
         return self._driver.execute_script("return Runner.instance_.crashed")

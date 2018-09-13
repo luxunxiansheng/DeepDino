@@ -37,13 +37,19 @@
 import os
 import time
 from pathlib import Path
+from collections import namedtuple
 
 
 import pandas as pd
 
 
+
+
 class Logger(object):
 
+    LOG_FILE_HEADER=['Time_Step','Episode','Score','Loss']
+    LOG_ENTRY= namedtuple("Log_Entry",'time_step episode score epoch_loss')
+    
     _instance = None
 
     @staticmethod
@@ -53,14 +59,14 @@ class Logger(object):
 
         return Logger._instance
 
-    def craete_log_file(self, config):  # Explictly init the logger anyhow
+    def create_log_file(self, config):  # Explictly init the logger anyhow
         
         timestampTime = time.strftime("%H%M%S")
         timestampDate = time.strftime("%Y%m%d")
         timestampLaunch = timestampDate + '-' + timestampTime
 
         project_root_dir=Path(__file__).parents[1]
-        self._score_file = os.path.join(project_root_dir, config["GAME"].get("score_log_file_path"), timestampLaunch + "-score.csv")
+        self._log_file = os.path.join(project_root_dir, config["GAME"].get("game_log_file_path"), timestampLaunch + "-game.csv")
         
         
     def __init__(self):
@@ -69,16 +75,17 @@ class Logger(object):
         else:
             Logger._instance = self
 
-        self._score_log = pd.DataFrame(columns=['Scores'])    
+        self._game_log = pd.DataFrame(columns=Logger.LOG_FILE_HEADER)    
 
-    def log_game_score(self, score):
-        self._score_log.loc[len(self._score_log)] = score
+    def log_game(self, log_entry):
+         self._game_log=self._game_log.append({'Time_Step': int(log_entry.time_step), 'Episode': int(log_entry.episode), 'Score': int(log_entry.score), 'Loss': log_entry.epoch_loss}, ignore_index=True)
+        
+    
 
     def dump_log(self):
-        if self._score_file!=None:
-            self._score_log.to_csv(self._score_file, index=False)
+        if self._log_file!=None:
+            self._game_log.to_csv(self._log_file, index=False)
         else:
             raise Exception("No Log files exist")
 
-    def get_lastest_score_log(self):
-        return self._score_file    
+    
