@@ -41,8 +41,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torchvision
-from PIL import Image
-from torchvision import transforms
+
+
 
 from agents.base_agent import BaseAgent
 from common.action import Action
@@ -109,11 +109,7 @@ class DQNAgent(BaseAgent):
         the_optimal_q_value_of_next_state = torch.max(predicted_Q_sa_t1)
         return the_optimal_q_value_of_next_state
 
-    def _get_game_state(self, game, action):
-        transform = transforms.Compose([transforms.CenterCrop((150, 600)), transforms.Resize((self._img_rows, self._img_columns)), transforms.Grayscale(), transforms.ToTensor()])
-        screen_shot, reward, terminal, score = game.get_state(action)
-        return transform(screen_shot), torch.tensor(reward), torch.tensor(terminal), score
-
+    
     def _learn(self, samples):
 
         q_value = torch.zeros(self._batch_size, self._action_space).cuda()

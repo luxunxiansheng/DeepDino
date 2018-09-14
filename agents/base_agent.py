@@ -64,3 +64,12 @@ class BaseAgent(object):
         self._img_rows = config['GLOBAL'].getint('img_rows')
         self._img_columns = config['GLOBAL'].getint('img_columns')
         self._log_interval = config['GLOBAL'].getint('log_interval')
+
+    def _preprocess_snapshot(self, screenshot):
+        transform = transforms.Compose([transforms.CenterCrop((150, 600)), transforms.Resize((self._img_rows, self._img_columns)), transforms.Grayscale(), transforms.ToTensor()])
+        return transform(screenshot)
+
+    def _get_game_state(self, game, action):
+        screen_shot, reward, terminal, score = game.get_state(action)
+        preprocessed_snapshot=self._preprocess_snapshot(screen_shot)
+        return preprocessed_snapshot, torch.tensor(reward), torch.tensor(terminal), score
