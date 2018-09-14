@@ -40,6 +40,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+import torch.nn as nn
 
 
 class Utilis(object):
@@ -48,19 +49,20 @@ class Utilis(object):
     def gpu_id_with_max_memory():
         os.system('nvidia-smi -q -d Memory|grep -A4 GPU|grep Free > dump')
         memory_available = [int(x.split()[2]) for x in open('dump', 'r').readlines()]
-
         os.system('rm ./dump')
         return np.argmax(memory_available)
 
-    
     @staticmethod
     def config():
         # parser config
         config_file = "config.ini"
-
         config = ConfigParser()
-
         config.read(os.path.join(Path(__file__).parents[1], config_file))
-
-        
         return config
+
+    @staticmethod
+    def layer_init(layer, w_scale=1.0):
+        nn.init.orthogonal_(layer.weight.data)
+        layer.weight.data.mul_(w_scale)
+        nn.init.constant_(layer.bias.data, 0)
+        return layer

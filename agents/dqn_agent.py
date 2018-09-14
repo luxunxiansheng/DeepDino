@@ -44,14 +44,14 @@ import torchvision
 from PIL import Image
 from torchvision import transforms
 
-from agents.dino_agent import DinoAgent
+from agents.base_agent import BaseAgent
 from common.action import Action
 from common.replay_memory import Replay_Memory
-from model.deep_mind_network import DeepMindNetwork
+from model.base_network import BaseNetwork
 from utils.logger import Logger
 
 
-class DQNAgent(DinoAgent):
+class DQNAgent(BaseAgent):
     def __init__(self, config):
 
         super(DQNAgent, self).__init__(config)
@@ -69,11 +69,12 @@ class DQNAgent(DinoAgent):
         self._frame_per_action = config['DQN'].getint('frame_per_action')
         self._observations = config['DQN'].getint('observations')
 
-        self._q_value_log_path = config['DQN'].get('q_value_file_path')
+               
+        self._network_name = config['DQN'].get('model_name')
 
-        self._policy_net = DeepMindNetwork(input_channels=self._image_stack_size, output_size=self._action_space).cuda()
+        self._policy_net = BaseNetwork.create(self._network_name, input_channels=self._image_stack_size, output_size=self._action_space).cuda()
+        self._target_net = BaseNetwork.create(self._network_name, input_channels=self._image_stack_size, output_size=self._action_space).cuda()
 
-        self._target_net = DeepMindNetwork(input_channels=self._image_stack_size, output_size=self._action_space).cuda()
         self._target_net.load_state_dict(self._policy_net.state_dict())
         self._target_net.eval()
 

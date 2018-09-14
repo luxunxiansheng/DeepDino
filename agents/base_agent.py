@@ -47,17 +47,15 @@ from torchvision import transforms
 
 from common.action import Action
 from common.replay_memory import Replay_Memory
-from model.deep_mind_network import DeepMindNetwork
 from utils.utilis import Utilis
 
 
-class DinoAgent(object):
+class BaseAgent(object):
     @staticmethod
     def create(config):
         if config['GLOBAL']['working_agent'] == 'DQNAgent':
             from agents.dqn_agent import DQNAgent   # dynamic import. Refer to the Item 52: know how to break circular dependencey in book  "Effective Python"
             return DQNAgent(config)
-
 
     def __init__(self, config):
         self._config = config
@@ -65,4 +63,4 @@ class DinoAgent(object):
         self._action_space = config['GLOBAL'].getint('action_space')
         self._img_rows = config['GLOBAL'].getint('img_rows')
         self._img_columns = config['GLOBAL'].getint('img_columns')
-        self._log_interval= config['GLOBAL'].getint('log_interval')
+        self._log_interval = config['GLOBAL'].getint('log_interval')

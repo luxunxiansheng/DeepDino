@@ -34,33 +34,18 @@
 # /
 
 
-import torch
+# A side note:To prevent the circular dependency , take advantage of dynamic import.
+# Refer to the Item 52: know how to break circular dependencey in book  "Effective Python"
 
-from agents.base_agent import BaseAgent
-from game import Game
-from utils.logger import Logger
-from utils.utilis import Utilis
+class BaseNetwork:
+    @staticmethod
+    def create(network, input_channels, output_size):
+        if network == 'DeepMindNetwork':
+            from model.deep_mind_network import DeepMindNetwork
+            return DeepMindNetwork(input_channels, output_size)
+        if network == 'DeepMindNetworkWithBatchNormal':
+            from model.deep_mind_network_with_batchnormal import DeepMindNetworkWithBatchNormal
+            return DeepMindNetworkWithBatchNormal(input_channels, output_size)
 
-
-def main():
-
-    # prepare the Log for recording the RL procedure
-    cfg = Utilis.config()
-    logger = Logger.get_instance()
-    logger.create_log(cfg)
-
-    # setup the GPU/CPU device
-    if torch.cuda.is_available():
-        torch.cuda.set_device(int(Utilis.gpu_id_with_max_memory()))
-
-    working_agent = BaseAgent.create(cfg)
-    game = Game(cfg)
-    try:
-        working_agent.train(game)
-    finally:
-        game.end()
-
-
-
-if __name__ == '__main__':
-    main()
+    def __init__(self, config):
+        pass

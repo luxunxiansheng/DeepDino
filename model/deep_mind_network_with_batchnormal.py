@@ -45,33 +45,35 @@ from model.base_network import BaseNetwork
 from utils.utilis import Utilis
 
 
-class DeepMindNetwork(nn.Module, BaseNetwork):
+class DeepMindNetworkWithBatchNormal(nn.Module, BaseNetwork):
     '''
-    The convolution newtork proposed by Mnih at al(2015)@deepmind
-    in the paper "Playing Atari with Deep Reinforcement 
-    Learning"
+    Add a batch normal layer based on the convolution newtork proposed by Mnih at al(2015) 
+    in the paper "Playing Atari with Deep Reinforcement earning"
 
     '''
 
     def __init__(self, input_channels, output_size):
 
-        super(DeepMindNetwork, self).__init__()
+        super(DeepMindNetworkWithBatchNormal, self).__init__()
 
         self._input_channels = input_channels
         self._output_size = output_size
 
         self.conv1 = nn.Sequential(
             Utilis.layer_init(nn.Conv2d(self._input_channels, 32, kernel_size=8, stride=4)),
+            Utilis.layer_init(nn.BatchNorm2d(32)),
             nn.ReLU()
         )
 
         self.conv2 = nn.Sequential(
             Utilis.layer_init(nn.Conv2d(32, 64, kernel_size=4, stride=2)),
+            Utilis.layer_init(nn.BatchNorm2d(64)),
             nn.ReLU()
         )
 
         self.conv3 = nn.Sequential(
             Utilis.layer_init(nn.Conv2d(64, 64, kernel_size=3, stride=1)),
+            Utilis.layer_init(nn.BatchNorm2d(64)),
             nn.ReLU()
         )
 
