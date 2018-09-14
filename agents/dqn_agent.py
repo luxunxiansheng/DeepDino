@@ -72,6 +72,7 @@ class DQNAgent(DinoAgent):
         self._q_value_log_path = config['DQN'].get('q_value_file_path')
 
         self._policy_net = DeepMindNetwork(input_channels=self._image_stack_size, output_size=self._action_space).cuda()
+
         self._target_net = DeepMindNetwork(input_channels=self._image_stack_size, output_size=self._action_space).cuda()
         self._target_net.load_state_dict(self._policy_net.state_dict())
         self._target_net.eval()
@@ -152,6 +153,7 @@ class DQNAgent(DinoAgent):
         the_most_most_recent_frames[-1] = next_frame
         return the_most_most_recent_frames
 
+    # A helper mehtod to test the screenshots  during training
     def _show(self, img, img2):
         npimg1 = img.numpy()
         npimg2 = img2.numpy()
@@ -161,6 +163,16 @@ class DQNAgent(DinoAgent):
         plt.subplot(212)
         plt.imshow(np.transpose(npimg2, (1, 2, 0)))
         plt.show()
+
+    def _tensorboard_log(self, t, epoch, score_t, loss):
+        info = {'score': score_t, 'loss': loss.tolist()}
+        for tag, value in info.items():
+            Logger.get_instance().scalar_summary(tag, value, epoch)
+
+        for tag, value in self._policy_net.named_parameters():
+            tag = tag.replace('.', '/')
+            Logger.get_instance().histo_summary(tag, value.data.cpu().numpy(), epoch)
+            Logger.get_instance().histo_summary(tag+'/grad', value.grad.data.cpu().numpy(), epoch)
 
     def train(self, game):
         t = 0
@@ -213,7 +225,6 @@ class DQNAgent(DinoAgent):
 
             if t > self._observations and t % self._log_interval == 0:
                 print("t:", t, "loss:", loss.tolist())
-               
 
             if t > self._observations and t % self._update_target_interval == 0:
                 self._update_target_net()
@@ -222,10 +233,7 @@ class DQNAgent(DinoAgent):
                 the_most_recent_state_stack = initial_state_stack
 
                 if t > self._observations:
-                    info = {'score': score_t, 'loss': loss.tolist()}
-                    for tag, value in info.items():
-                        Logger.get_instance().scalar_summary(tag,value,epoch)
-            
+                    self._tensorboard_log(t, epoch, score_t, loss)
 
                 epoch = epoch+1
             else:
