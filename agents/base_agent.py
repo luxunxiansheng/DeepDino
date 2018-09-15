@@ -67,13 +67,13 @@ class BaseAgent(object):
         self._log_interval = config['GLOBAL'].getint('log_interval')
 
     
-    @staticmethod    # Oops....it seems weird somehow to define a static private method in python 
-    def _detect_dino_position(screenshot):
+    
+    def _detect_dino_position(self,screenshot):
         #convert image from PIL to cv2 
-        screenshot = np.array(screenshot)
+        screenshot = cv2.cvtColor(np.array(screenshot),cv2.COLOR_RGB2BGR)
 
         dino_template_icon = cv2.imread('/home/lb/workspace/Dino/resources/dino_icon_small.png')
-        icon_width, icon_height = dino_template_icon.shape[::-1]
+        icon_width, icon_height,_ = dino_template_icon.shape
        
         method = eval('cv2.TM_CCOEFF')
         result = cv2.matchTemplate(screenshot, dino_template_icon, method)
@@ -85,24 +85,35 @@ class BaseAgent(object):
 
         return top_left, bottom_right
 
-    @staticmethod    
-    def _remove_dino_from_screenshot(screenshot):
+    
+    def _remove_dino_from_screenshot(self,screenshot):
         # find the location where the dino is 
-        top_left, bottom_right = BaseAgent._detect_dino_position(screenshot)
-        screenshot = screenshot.paste((0, 0, 0), [top_left[0], top_left[1], bottom_right[0], bottom_right[1]])
+        top_left, bottom_right = self._detect_dino_position(screenshot)
+
+        import time
+
+        timestamp=str(time.time())
+        file_name = timestamp + '_before.png'
+        screenshot.save(file_name,'PNG')
+    
+        screenshot.paste((0, 0, 0), [top_left[0], top_left[1], bottom_right[0], bottom_right[1]])
+        file_name = timestamp + '_after.png'
+        screenshot.save(file_name,'PNG')
+              
+
         return screenshot
 
     def _preprocess_snapshot(self, screenshot):
         transform = transforms.Compose([transforms.CenterCrop((150, 600)),
-                                        transforms.Lambda(lambda screenshot:BaseAgent._remove_dino_from_screenshot(screenshot)),
+                                        transforms.Lambda(lambda screenshot:self._remove_dino_from_screenshot(screenshot)),
                                         transforms.Resize((self._img_rows, self._img_columns)),
                                         transforms.Grayscale(),
                                         transforms.ToTensor()])
         return transform(screenshot)
 
     def _get_game_state(self, game, action):
+        
         screen_shot, reward, terminal, score = game.get_state(action)
-        
-        
+                
         preprocessed_snapshot = self._preprocess_snapshot(screen_shot)
         return preprocessed_snapshot, torch.tensor(reward), torch.tensor(terminal), score
