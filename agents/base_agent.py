@@ -66,46 +66,10 @@ class BaseAgent(object):
         self._img_columns = config['GLOBAL'].getint('img_columns')
         self._log_interval = config['GLOBAL'].getint('log_interval')
 
-    
-    
-    def _detect_dino_position(self,screenshot):
-        #convert image from PIL to cv2 
-        screenshot = cv2.cvtColor(np.array(screenshot),cv2.COLOR_RGB2BGR)
-
-        dino_template_icon = cv2.imread('/home/lb/workspace/Dino/resources/dino_icon_small.png')
-        icon_width, icon_height,_ = dino_template_icon.shape
        
-        method = eval('cv2.TM_CCOEFF')
-        result = cv2.matchTemplate(screenshot, dino_template_icon, method)
-            
-        _, _, _, max_loc = cv2.minMaxLoc(result)
-            
-        top_left = max_loc
-        bottom_right = (top_left[0] + icon_width, top_left[1] + icon_height)
-
-        return top_left, bottom_right
-
-    
-    def _remove_dino_from_screenshot(self,screenshot):
-        # find the location where the dino is 
-        top_left, bottom_right = self._detect_dino_position(screenshot)
-
-        import time
-
-        timestamp=str(time.time())
-        file_name = timestamp + '_before.png'
-        screenshot.save(file_name,'PNG')
-    
-        screenshot.paste((0, 0, 0), [top_left[0], top_left[1], bottom_right[0], bottom_right[1]])
-        file_name = timestamp + '_after.png'
-        screenshot.save(file_name,'PNG')
-              
-
-        return screenshot
 
     def _preprocess_snapshot(self, screenshot):
         transform = transforms.Compose([transforms.CenterCrop((150, 600)),
-                                        transforms.Lambda(lambda screenshot:self._remove_dino_from_screenshot(screenshot)),
                                         transforms.Resize((self._img_rows, self._img_columns)),
                                         transforms.Grayscale(),
                                         transforms.ToTensor()])
@@ -114,6 +78,5 @@ class BaseAgent(object):
     def _get_game_state(self, game, action):
         
         screen_shot, reward, terminal, score = game.get_state(action)
-                
         preprocessed_snapshot = self._preprocess_snapshot(screen_shot)
         return preprocessed_snapshot, torch.tensor(reward), torch.tensor(terminal), score
