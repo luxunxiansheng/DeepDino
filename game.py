@@ -57,6 +57,11 @@ class Game(object):
 
     _INIT_SCRIPT = "document.getElementsByClassName('runner-canvas')[0].id = 'runner-canvas'"
 
+    _RESET_1X_TREX_INVISIBLE = "document.getElementById('1x-trex').src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQgAAAAvCAYAAAAfKFTFAAAABHNCSVQICAgIfAhkiAAAAEdJREFUeJztwTEBAAAAwqD1T20ND6AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACuDMIPAAHJ+DzIAAAAAElFTkSuQmCC'"
+    
+    _RESET_2X_TREX_INVISIBLE = "document.getElementById('2x-trex').src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAhAAAABeCAYAAAByzS28AAAABHNCSVQICAgIfAhkiAAAANdJREFUeJztwQENAAAAwqD3T20PBxQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC/BggLAAHlxxttAAAAAElFTkSuQmCC'"
+
+
     # get image from canvas
     _GET_BASE64_SCRIPT = "canvasRunner = document.getElementById('runner-canvas'); \
         return canvasRunner.toDataURL().substring(22)"
@@ -74,6 +79,9 @@ class Game(object):
 
         self._wait.until(EC.presence_of_all_elements_located((By.ID, "socialbutts")))
 
+        self._driver.execute_script(self._RESET_1X_TREX_INVISIBLE)
+        self._driver.execute_script(self._RESET_2X_TREX_INVISIBLE)
+        
         self._driver.execute_script("Runner.config.ACCELERATION=0")
         self._driver.execute_script(self._INIT_SCRIPT)
 
