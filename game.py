@@ -79,8 +79,9 @@ class Game(object):
 
         self._wait.until(EC.presence_of_all_elements_located((By.ID, "socialbutts")))
 
-        self._driver.execute_script(self._RESET_1X_TREX_INVISIBLE)
-        self._driver.execute_script(self._RESET_2X_TREX_INVISIBLE)
+        if  config['GAME'].getboolean('dino_invisible'):
+            self._driver.execute_script(self._RESET_1X_TREX_INVISIBLE)
+            self._driver.execute_script(self._RESET_2X_TREX_INVISIBLE)
         
         self._driver.execute_script("Runner.config.ACCELERATION=0")
         self._driver.execute_script(self._INIT_SCRIPT)
@@ -125,6 +126,10 @@ class Game(object):
             score = 0
 
         return int(score)
+
+    def set_highest_score(self, score):
+        script='return Runner.instance_.distanceMeter.setHighScore('+  str(score)+ ')'
+        return self._driver.execute_script(script)    
 
     def pause(self):
         return self._driver.execute_script("return Runner.instance_.stop()")

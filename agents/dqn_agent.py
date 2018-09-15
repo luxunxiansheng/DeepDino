@@ -42,13 +42,12 @@ import torch.nn as nn
 import torch.optim as optim
 import torchvision
 
-
-
 from agents.base_agent import BaseAgent
 from common.action import Action
 from common.replay_memory import Replay_Memory
 from model.base_network import BaseNetwork
-from utils.logger import Logger
+
+from utils.utilis import Utilis
 
 
 class DQNAgent(BaseAgent):
@@ -69,14 +68,10 @@ class DQNAgent(BaseAgent):
         self._frame_per_action = config['DQN'].getint('frame_per_action')
         self._observations = config['DQN'].getint('observations')
 
-               
         self._network_name = config['DQN'].get('model_name')
 
         self._policy_net = BaseNetwork.create(self._network_name, input_channels=self._image_stack_size, output_size=self._action_space).cuda()
         self._target_net = BaseNetwork.create(self._network_name, input_channels=self._image_stack_size, output_size=self._action_space).cuda()
-
-        self._target_net.load_state_dict(self._policy_net.state_dict())
-        self._target_net.eval()
 
         self._criterion = nn.SmoothL1Loss()
         self._optimizer = optim.RMSprop(self._policy_net.parameters(), momentum=self._momentum, lr=self._lr)
@@ -109,7 +104,6 @@ class DQNAgent(BaseAgent):
         the_optimal_q_value_of_next_state = torch.max(predicted_Q_sa_t1)
         return the_optimal_q_value_of_next_state
 
-    
     def _learn(self, samples):
 
         q_value = torch.zeros(self._batch_size, self._action_space).cuda()
@@ -150,32 +144,20 @@ class DQNAgent(BaseAgent):
         the_most_most_recent_frames[-1] = next_frame
         return the_most_most_recent_frames
 
-    # A helper mehtod to test the screenshots  during training
-    def _show(self, img, img2):
-        npimg1 = img.numpy()
-        npimg2 = img2.numpy()
-
-        plt.subplot(211)
-        plt.imshow(np.transpose(npimg1, (1, 2, 0)))
-        plt.subplot(212)
-        plt.imshow(np.transpose(npimg2, (1, 2, 0)))
-        plt.show()
-
-    def _tensorboard_log(self, t, epoch, score_t, loss):
-        info = {'score': score_t, 'loss': loss.tolist()}
-        for tag, value in info.items():
-            Logger.get_instance().scalar_summary(tag, value, epoch)
-
-        for tag, value in self._policy_net.named_parameters():
-            tag = tag.replace('.', '/')
-            Logger.get_instance().histo_summary(tag, value.data.cpu().numpy(), epoch)
-            Logger.get_instance().histo_summary(tag+'/grad', value.grad.data.cpu().numpy(), epoch)
-
     def train(self, game):
-        t = 0
-        epoch = 0
-        loss = torch.FloatTensor([0])
-        epsilon = self._init_epsilon
+     
+
+        t, epoch, score, state_dict = self._get_checkpoint()
+        
+        highest_score=score
+
+        game.set_highest_score(score)
+
+        if state_dict is not None:
+            self._policy_net.load_state_dict(state_dict)
+        
+        self._target_net.load_state_dict(self._policy_net.state_dict())
+        self._target_net.eval()
 
         replay_memory = Replay_Memory(self._replay_memory_capacity)
 
@@ -188,7 +170,8 @@ class DQNAgent(BaseAgent):
         the_most_recent_state_stack = initial_state_stack
 
         while (True):  # endless running
-            loss = 0
+            loss = torch.FloatTensor([0])
+            epsilon = self._init_epsilon
             reward_t = 0
             action_t = Action.DO_NOTHING
 
@@ -216,7 +199,7 @@ class DQNAgent(BaseAgent):
             # store the transition in experience_replay_memory
             replay_memory.push((the_most_recent_state_stack, action_t, reward_t, the_most_most_recent_state_stack, terminal))
 
-            if t > self._observations:
+            if t > self._observations and replay_memory.size()> 100:
                 experience_batch = replay_memory.sample(self._batch_size)
                 loss = self._learn(experience_batch)
 
@@ -230,7 +213,12 @@ class DQNAgent(BaseAgent):
                 the_most_recent_state_stack = initial_state_stack
 
                 if t > self._observations:
-                    self._tensorboard_log(t, epoch, score_t, loss)
+                    
+                    if score_t > highest_score:
+                        highest_score = score_t
+                    
+                    self._set_checkpoint(t,epoch,highest_score,score_t,self._policy_net.state_dict())
+                    self._tensorboard_log(t, epoch, score_t, loss,self._policy_net)
 
                 epoch = epoch+1
             else:

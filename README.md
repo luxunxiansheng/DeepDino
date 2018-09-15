@@ -1,9 +1,6 @@
-# DeepDino
+# Overview
 A carton game powered by deep reinforcement  learning algorithm 
-
 A playground to try various RL algorithms 
-
-
 
 
 # Programming Philosophy 
@@ -39,4 +36,6 @@ A tensorboard server will be launched and you can visit the tensorflow web page 
 browser just as promoted in the terminal
 
 
+
+# Visible or Invisible
 

@@ -1,2 +1,11 @@
-from pathlib import Path
-print(Path(__file__).parents[1])
+def foo(t):
+    t = 12
+    
+
+
+
+m = 5
+
+foo(m)
+
+print(m)
