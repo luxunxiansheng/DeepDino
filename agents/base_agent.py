@@ -45,6 +45,7 @@ import torchvision
 from PIL import Image
 from torchvision import transforms
 
+import cv2
 from common.action import Action
 from common.replay_memory import Replay_Memory
 from utils.utilis import Utilis
@@ -65,11 +66,43 @@ class BaseAgent(object):
         self._img_columns = config['GLOBAL'].getint('img_columns')
         self._log_interval = config['GLOBAL'].getint('log_interval')
 
+    
+    @staticmethod    # Oops....it seems weird somehow to define a static private method in python 
+    def _detect_dino_position(screenshot):
+        #convert image from PIL to cv2 
+        screenshot = np.array(screenshot)
+
+        dino_template_icon = cv2.imread('/home/lb/workspace/Dino/resources/dino_icon_small.png')
+        icon_width, icon_height = dino_template_icon.shape[::-1]
+       
+        method = eval('cv2.TM_CCOEFF')
+        result = cv2.matchTemplate(screenshot, dino_template_icon, method)
+            
+        _, _, _, max_loc = cv2.minMaxLoc(result)
+            
+        top_left = max_loc
+        bottom_right = (top_left[0] + icon_width, top_left[1] + icon_height)
+
+        return top_left, bottom_right
+
+    @staticmethod    
+    def _remove_dino_from_screenshot(screenshot):
+        # find the location where the dino is 
+        top_left, bottom_right = BaseAgent._detect_dino_position(screenshot)
+        screenshot = screenshot.paste((0, 0, 0), [top_left[0], top_left[1], bottom_right[0], bottom_right[1]])
+        return screenshot
+
     def _preprocess_snapshot(self, screenshot):
-        transform = transforms.Compose([transforms.CenterCrop((150, 600)), transforms.Resize((self._img_rows, self._img_columns)), transforms.Grayscale(), transforms.ToTensor()])
+        transform = transforms.Compose([transforms.CenterCrop((150, 600)),
+                                        transforms.Lambda(lambda screenshot:BaseAgent._remove_dino_from_screenshot(screenshot)),
+                                        transforms.Resize((self._img_rows, self._img_columns)),
+                                        transforms.Grayscale(),
+                                        transforms.ToTensor()])
         return transform(screenshot)
 
     def _get_game_state(self, game, action):
         screen_shot, reward, terminal, score = game.get_state(action)
-        preprocessed_snapshot=self._preprocess_snapshot(screen_shot)
+        
+        
+        preprocessed_snapshot = self._preprocess_snapshot(screen_shot)
         return preprocessed_snapshot, torch.tensor(reward), torch.tensor(terminal), score
