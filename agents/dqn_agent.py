@@ -46,7 +46,6 @@ from agents.base_agent import BaseAgent
 from common.action import Action
 from common.replay_memory import Replay_Memory
 from model.base_network import BaseNetwork
-
 from utils.utilis import Utilis
 
 
@@ -110,18 +109,19 @@ class DQNAgent(BaseAgent):
         td_target = torch.zeros(self._batch_size, self._action_space).cuda()
 
         for i in range(0, self._batch_size):
-            state_t = samples[i][0]
+            stack_t = samples[i][0]
             action_t = samples[i][1]
             reward_t = samples[i][2]
-            state_t1 = samples[i][3]
+            stack_t1 = samples[i][3]
             terminal = samples[i][4]
 
-            the_optimal_q_value_of_next_state = self._DQN(state_t1) if self._isDQN else self._Double_DQN(state_t1)
+            the_optimal_q_value_of_next_state = self._DQN(stack_t1) if self._isDQN else self._Double_DQN(stack_t1)
 
             # td(0)
             td_target[i][int(action_t)] = reward_t if terminal else reward_t + self._gamma*the_optimal_q_value_of_next_state.tolist()
 
-            predicted_Q_sa_t = self._policy_net(state_t.cuda())
+            # semi-gradient policy
+            predicted_Q_sa_t = self._policy_net(stack_t.cuda())
             q_value[i][int(action_t)] = predicted_Q_sa_t[int(action_t)]
 
         loss = self._criterion(q_value, td_target)
@@ -145,17 +145,17 @@ class DQNAgent(BaseAgent):
         return the_most_most_recent_frames
 
     def train(self, game):
-     
 
+        # resume from the checkpoint
         t, epoch, score, state_dict = self._get_checkpoint()
-        
-        highest_score=score
+
+        highest_score = score
 
         game.set_highest_score(score)
 
         if state_dict is not None:
             self._policy_net.load_state_dict(state_dict)
-        
+
         self._target_net.load_state_dict(self._policy_net.state_dict())
         self._target_net.eval()
 
@@ -170,7 +170,7 @@ class DQNAgent(BaseAgent):
         the_most_recent_state_stack = initial_state_stack
 
         while (True):  # endless running
-            loss = torch.FloatTensor([0])
+
             epsilon = self._init_epsilon
             reward_t = 0
             action_t = Action.DO_NOTHING
@@ -199,26 +199,24 @@ class DQNAgent(BaseAgent):
             # store the transition in experience_replay_memory
             replay_memory.push((the_most_recent_state_stack, action_t, reward_t, the_most_most_recent_state_stack, terminal))
 
-            if t > self._observations and replay_memory.size()> 100:
+            if replay_memory.size() > self._observations:
                 experience_batch = replay_memory.sample(self._batch_size)
                 loss = self._learn(experience_batch)
 
-            if t > self._observations and t % self._log_interval == 0:
-                print("t:", t, "loss:", loss.tolist())
+                if t % self._update_target_interval == 0:
+                    self._update_target_net()
 
-            if t > self._observations and t % self._update_target_interval == 0:
-                self._update_target_net()
+                if t % self._log_interval == 0:
+                    print("t:", t, "epoch:", epoch, "score:", score_t, "loss:", loss)
+                    self._set_checkpoint(t, epoch, highest_score, score_t, self._policy_net.state_dict())
+                    self._tensorboard_log(t, epoch, score_t, loss, self._policy_net)
 
             if terminal:
-                the_most_recent_state_stack = initial_state_stack
 
-                if t > self._observations:
-                    
-                    if score_t > highest_score:
-                        highest_score = score_t
-                    
-                    self._set_checkpoint(t,epoch,highest_score,score_t,self._policy_net.state_dict())
-                    self._tensorboard_log(t, epoch, score_t, loss,self._policy_net)
+                if score_t > highest_score:
+                    highest_score = score_t
+
+                the_most_recent_state_stack = initial_state_stack
 
                 epoch = epoch+1
             else:

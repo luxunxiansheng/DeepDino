@@ -36,6 +36,7 @@
 
 import random
 
+import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -45,11 +46,10 @@ import torchvision
 from PIL import Image
 from torchvision import transforms
 
-import cv2
 from common.action import Action
 from common.replay_memory import Replay_Memory
-from utils.utilis import Utilis
 from utils.logger import Logger
+from utils.utilis import Utilis
 
 
 class BaseAgent(object):
@@ -66,22 +66,19 @@ class BaseAgent(object):
         self._img_rows = config['GLOBAL'].getint('img_rows')
         self._img_columns = config['GLOBAL'].getint('img_columns')
         self._log_interval = config['GLOBAL'].getint('log_interval')
-        self._my_name=self._config['GLOBAL']['working_agent']
-        
-               
-       
+        self._my_name = self._config['GLOBAL']['working_agent']
+
     def _get_checkpoint(self):
-                    
+
         best_checkpoint = Utilis.load_best_checkpoint(self._my_name)
         loaded_checkpoint = Utilis.load_checkpoint(self._my_name)
-        
-        final_checkpoint=None
-         
+
+        final_checkpoint = None
+
         if best_checkpoint is not None:
-           final_checkpoint = best_checkpoint
+            final_checkpoint = best_checkpoint
         elif loaded_checkpoint is not None:
             final_checkpoint = loaded_checkpoint
-           
 
         if final_checkpoint is not None:
             t = final_checkpoint['time_step']
@@ -93,33 +90,28 @@ class BaseAgent(object):
             epoch = 0
             score = 0
             state_dict = None
-          
-        return t, epoch ,score, state_dict
 
-    def _set_checkpoint(self,t, epoch, highest_score, score_t, state_dict):
+        return t, epoch, score, state_dict
+
+    def _set_checkpoint(self, t, epoch, highest_score, score_t, state_dict):
         checkpoint = {
             'time_step': t,
             'epoch': epoch,
             'score': score_t,
             'state_dict': state_dict
         }
-        
-        Utilis.save_checkpoint(checkpoint,highest_score>score_t,self._my_name)
- 
 
-    def _tensorboard_log(self, t, epoch, score_t, loss,model):
-        info = {'score': score_t, 'loss': loss.tolist()}
+        Utilis.save_checkpoint(checkpoint, highest_score > score_t, self._my_name)
+
+    def _tensorboard_log(self, t, epoch, score_t, loss, model):
+        info = {'score': score_t, 'loss': loss}
         for tag, value in info.items():
             Logger.get_instance().scalar_summary(tag, value, epoch)
 
         for tag, value in model.named_parameters():
             tag = tag.replace('.', '/')
             Logger.get_instance().histo_summary(tag, value.data.cpu().numpy(), epoch)
-            Logger.get_instance().histo_summary(tag+'/grad', value.grad.data.cpu().numpy(), epoch)   
-
-
-    
-        
+            Logger.get_instance().histo_summary(tag+'/grad', value.grad.data.cpu().numpy(), epoch)
 
     def _preprocess_snapshot(self, screenshot):
         transform = transforms.Compose([transforms.CenterCrop((150, 600)),
@@ -129,7 +121,7 @@ class BaseAgent(object):
         return transform(screenshot)
 
     def _get_game_state(self, game, action):
-        
+
         screen_shot, reward, terminal, score = game.get_state(action)
         preprocessed_snapshot = self._preprocess_snapshot(screen_shot)
         return preprocessed_snapshot, torch.tensor(reward), torch.tensor(terminal), score
@@ -143,4 +135,4 @@ class BaseAgent(object):
         plt.imshow(np.transpose(npimg1, (1, 2, 0)))
         plt.subplot(212)
         plt.imshow(np.transpose(npimg2, (1, 2, 0)))
-        plt.show() 
+        plt.show()
