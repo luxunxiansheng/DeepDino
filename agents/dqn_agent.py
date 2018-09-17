@@ -133,7 +133,7 @@ class DQNAgent(BaseAgent):
             param.grad.data.clamp_(-1, 1)
         self._optimizer.step()
 
-        return loss
+        return loss.tolist()
 
     def _update_target_net(self):
         self._target_net.load_state_dict(self._policy_net.state_dict())
@@ -146,14 +146,23 @@ class DQNAgent(BaseAgent):
 
     def train(self, game):
 
+        epsilon = self._init_epsilon
+        t = 0
+        epoch = 0
+        highest_score = 0
+        state_dict = None
+        
+        
         # resume from the checkpoint
-        t, epoch, score, state_dict = self._get_checkpoint()
-
-        highest_score = score
-
-        game.set_highest_score(score)
-
-        if state_dict is not None:
+        checkpoint = self._get_checkpoint()
+        if checkpoint is not None:
+            t =checkpoint['time_step']
+            epoch =checkpoint['epoch']
+            epsilon=checkpoint['epsilon']
+            highest_score=checkpoint['highest_score']
+            state_dict = checkpoint['state_dict']
+            
+            game.set_highest_score(highest_score)
             self._policy_net.load_state_dict(state_dict)
 
         self._target_net.load_state_dict(self._policy_net.state_dict())
@@ -170,8 +179,8 @@ class DQNAgent(BaseAgent):
         the_most_recent_state_stack = initial_state_stack
 
         while (True):  # endless running
-
-            epsilon = self._init_epsilon
+            loss =0
+            
             reward_t = 0
             action_t = Action.DO_NOTHING
 
@@ -199,6 +208,7 @@ class DQNAgent(BaseAgent):
             # store the transition in experience_replay_memory
             replay_memory.push((the_most_recent_state_stack, action_t, reward_t, the_most_most_recent_state_stack, terminal))
 
+            # Not to learn and log until the replay memory is not too empty
             if replay_memory.size() > self._observations:
                 experience_batch = replay_memory.sample(self._batch_size)
                 loss = self._learn(experience_batch)
@@ -206,19 +216,22 @@ class DQNAgent(BaseAgent):
                 if t % self._update_target_interval == 0:
                     self._update_target_net()
 
-                if t % self._log_interval == 0:
-                    print("t:", t, "epoch:", epoch, "score:", score_t, "loss:", loss)
-                    self._set_checkpoint(t, epoch, highest_score, score_t, self._policy_net.state_dict())
-                    self._tensorboard_log(t, epoch, score_t, loss, self._policy_net)
-
+                                    
             if terminal:
-
+                the_most_recent_state_stack = initial_state_stack 
+                print("t:", t, "epoch:", epoch, "loss:", loss) 
+                
+                
                 if score_t > highest_score:
                     highest_score = score_t
-
-                the_most_recent_state_stack = initial_state_stack
-
-                epoch = epoch+1
+                             
+                game.pause()
+                # log and save the checkpoint    
+                self._set_checkpoint(t, epoch,epsilon,highest_score,score_t,self._policy_net.state_dict())
+                self._tensorboard_log(t, epoch, highest_score, score_t, loss, self._policy_net)
+                game.resume()
+                
+                epoch = epoch + 1
             else:
                 the_most_recent_state_stack = the_most_most_recent_state_stack
 

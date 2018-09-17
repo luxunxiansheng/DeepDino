@@ -139,6 +139,7 @@ class Game(object):
 
     def end(self):
         self._driver.close()
+        self._driver.quit()
 
     def _grab_screen(self):
         image_b64 = self._driver.execute_script(self._GET_BASE64_SCRIPT)

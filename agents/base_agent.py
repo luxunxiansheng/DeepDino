@@ -80,38 +80,29 @@ class BaseAgent(object):
         elif loaded_checkpoint is not None:
             final_checkpoint = loaded_checkpoint
 
-        if final_checkpoint is not None:
-            t = final_checkpoint['time_step']
-            epoch = final_checkpoint['epoch']
-            score = final_checkpoint['score']
-            state_dict = final_checkpoint['state_dict']
-        else:
-            t = 0
-            epoch = 0
-            score = 0
-            state_dict = None
+        return final_checkpoint
 
-        return t, epoch, score, state_dict
-
-    def _set_checkpoint(self, t, epoch, highest_score, score_t, state_dict):
+    def _set_checkpoint(self, t, epoch, epsilon,highest_score, score_t,state_dict):
+        
         checkpoint = {
             'time_step': t,
             'epoch': epoch,
-            'score': score_t,
+            'episilon': epsilon,
+            'highest_score': highest_score,
             'state_dict': state_dict
         }
 
         Utilis.save_checkpoint(checkpoint, highest_score > score_t, self._my_name)
 
-    def _tensorboard_log(self, t, epoch, score_t, loss, model):
-        info = {'score': score_t, 'loss': loss}
+    def _tensorboard_log(self, t, epoch, highest_score,score_t, loss, model):
+        info = {'score': score_t, 'hi_score': highest_score,'loss': loss}
         for tag, value in info.items():
             Logger.get_instance().scalar_summary(tag, value, epoch)
 
         for tag, value in model.named_parameters():
             tag = tag.replace('.', '/')
             Logger.get_instance().histo_summary(tag, value.data.cpu().numpy(), epoch)
-            Logger.get_instance().histo_summary(tag+'/grad', value.grad.data.cpu().numpy(), epoch)
+            
 
     def _preprocess_snapshot(self, screenshot):
         transform = transforms.Compose([transforms.CenterCrop((150, 600)),
