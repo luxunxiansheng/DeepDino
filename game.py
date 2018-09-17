@@ -127,15 +127,13 @@ class Game(object):
 
         return int(score)
 
-    def set_highest_score(self, score):
-        script='return Runner.instance_.distanceMeter.setHighScore('+  str(score)+ ')'
-        return self._driver.execute_script(script)    
+    
 
     def pause(self):
-        return self._driver.execute_script("return Runner.instance_.stop()")
+        return self._driver.execute_script("Runner.instance_.stop()")
 
     def resume(self):
-        return self._driver.execute_script("return Runner.instance_.play()")
+        return self._driver.execute_script("Runner.instance_.play()")
 
     def end(self):
         self._driver.close()

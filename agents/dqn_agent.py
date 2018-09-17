@@ -75,6 +75,8 @@ class DQNAgent(BaseAgent):
         self._criterion = nn.SmoothL1Loss()
         self._optimizer = optim.RMSprop(self._policy_net.parameters(), momentum=self._momentum, lr=self._lr)
 
+    
+    # e-greedy exploration 
     def _get_action(self, epsilon, state):
         action_t = Action.DO_NOTHING
         if random.random() <= epsilon:
@@ -120,7 +122,7 @@ class DQNAgent(BaseAgent):
             # td(0)
             td_target[i][int(action_t)] = reward_t if terminal else reward_t + self._gamma*the_optimal_q_value_of_next_state.tolist()
 
-            # semi-gradient policy
+            
             predicted_Q_sa_t = self._policy_net(stack_t.cuda())
             q_value[i][int(action_t)] = predicted_Q_sa_t[int(action_t)]
 
@@ -151,18 +153,16 @@ class DQNAgent(BaseAgent):
         epoch = 0
         highest_score = 0
         state_dict = None
-        
-        
+
         # resume from the checkpoint
         checkpoint = self._get_checkpoint()
         if checkpoint is not None:
-            t =checkpoint['time_step']
-            epoch =checkpoint['epoch']
-            epsilon=checkpoint['epsilon']
-            highest_score=checkpoint['highest_score']
-            state_dict = checkpoint['state_dict']
+            t = checkpoint['time_step']
+            epoch = checkpoint['epoch']
+            epsilon = checkpoint['epsilon']
+            highest_score= checkpoint['highest_score']
             
-            game.set_highest_score(highest_score)
+            state_dict = checkpoint['state_dict']
             self._policy_net.load_state_dict(state_dict)
 
         self._target_net.load_state_dict(self._policy_net.state_dict())
@@ -179,8 +179,8 @@ class DQNAgent(BaseAgent):
         the_most_recent_state_stack = initial_state_stack
 
         while (True):  # endless running
-            loss =0
-            
+            loss = 0
+
             reward_t = 0
             action_t = Action.DO_NOTHING
 
@@ -194,6 +194,7 @@ class DQNAgent(BaseAgent):
 
             # run the selected action and observed next state and reward
             state_t1, reward_t, terminal, score_t = self._get_game_state(game, action_t)
+           
 
             # assemble the next state stack which contains the lastest 3 states and the next state
             the_most_most_recent_state_stack = self._get_most_recent_states(the_most_recent_state_stack, state_t1)
@@ -213,24 +214,24 @@ class DQNAgent(BaseAgent):
                 experience_batch = replay_memory.sample(self._batch_size)
                 loss = self._learn(experience_batch)
 
+                if t%  self._log_interval == 0:
+                    print("t:", t, "epoch:", epoch, "loss:", loss)
+
                 if t % self._update_target_interval == 0:
                     self._update_target_net()
 
-                                    
             if terminal:
-                the_most_recent_state_stack = initial_state_stack 
-                print("t:", t, "epoch:", epoch, "loss:", loss) 
-                
-                
+                the_most_recent_state_stack = initial_state_stack
+
                 if score_t > highest_score:
                     highest_score = score_t
-                             
+
                 game.pause()
-                # log and save the checkpoint    
-                self._set_checkpoint(t, epoch,epsilon,highest_score,score_t,self._policy_net.state_dict())
+                # log and save the checkpoint
+                self._set_checkpoint(t, epoch, epsilon, highest_score, score_t, self._policy_net.state_dict())
                 self._tensorboard_log(t, epoch, highest_score, score_t, loss, self._policy_net)
                 game.resume()
-                
+
                 epoch = epoch + 1
             else:
                 the_most_recent_state_stack = the_most_most_recent_state_stack
