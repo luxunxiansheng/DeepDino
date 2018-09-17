@@ -87,7 +87,7 @@ class BaseAgent(object):
         checkpoint = {
             'time_step': t,
             'epoch': epoch,
-            'episilon': epsilon,
+            'epsilon': epsilon,
             'highest_score': highest_score,
             'state_dict': state_dict
         }
