@@ -90,7 +90,7 @@ class DQNAgent(BaseAgent):
             action_t = Action.JUMP
         return action_t
 
-    def _Double_DQN(self, state_t1):
+    def _predict_optimal_Q_value_with_DoubleDQN(self, state_t1):
         # predict the q value of the next state with the policy network
         predicted_Q_sa_t1 = self._policy_net(state_t1.cuda()).detach()
         # get the action which leads to the max q value of the next state
@@ -100,7 +100,7 @@ class DQNAgent(BaseAgent):
 
         return the_optimal_q_value_of_next_state
 
-    def _DQN(self, state_t1):
+    def _predict_optimal_Q_value_with_DQN(self, state_t1):
         predicted_Q_sa_t1 = self._target_net(state_t1.cuda()).detach()
         the_optimal_q_value_of_next_state = torch.max(predicted_Q_sa_t1)
         return the_optimal_q_value_of_next_state
@@ -117,7 +117,7 @@ class DQNAgent(BaseAgent):
             stack_t1 = samples[i][3]
             terminal = samples[i][4]
 
-            the_optimal_q_value_of_next_state = self._DQN(stack_t1) if self._isDQN else self._Double_DQN(stack_t1)
+            the_optimal_q_value_of_next_state = self._predict_optimal_Q_value_with_DQN(stack_t1) if self._isDQN else self._predict_optimal_Q_value_with_DoubleDQN(stack_t1)
 
             # td(0)
             td_target[i][int(action_t)] = reward_t if terminal else reward_t + self._gamma*the_optimal_q_value_of_next_state.tolist()
