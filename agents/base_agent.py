@@ -61,12 +61,14 @@ class BaseAgent(object):
 
     def __init__(self, config):
         self._config = config
-        self._image_stack_size = config['GLOBAL'].getint('img_stack_size')
-        self._action_space = config['GLOBAL'].getint('action_space')
-        self._img_rows = config['GLOBAL'].getint('img_rows')
-        self._img_columns = config['GLOBAL'].getint('img_columns')
+        self._image_stack_size = 4
+        self._action_space = 2
+        self._img_rows = 84
+        self._img_columns = 84
         self._log_interval = config['GLOBAL'].getint('log_interval')
         self._my_name = self._config['GLOBAL']['working_agent']
+        self._final_epsilon = config['GLOBAL'].getfloat('final_epsilon')
+        self._init_epsilon = config['GLOBAL'].getfloat('init_epsilon')
 
     def _get_checkpoint(self):
 
@@ -88,7 +90,7 @@ class BaseAgent(object):
             'time_step': t,
             'epoch': epoch,
             'epsilon': epsilon,
-            'highest_score':highest_score,
+            'highest_score': highest_score,
             'state_dict': state_dict
         }
 

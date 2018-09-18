@@ -54,8 +54,14 @@ def main():
 
     working_agent = BaseAgent.create(cfg)
     game = Game(cfg)
+
     try:
-        working_agent.train(game)
+        if cfg['GLOBAL'].get('working_mode') == 'train':
+            working_agent.train(game)
+        elif cfg['GLOBAL'].get('working_mode') =='play':
+            working_agent.play(game)
+        else:
+            pass
     finally:
         game.end()
 

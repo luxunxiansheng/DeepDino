@@ -83,7 +83,9 @@ class Game(object):
             self._driver.execute_script(self._RESET_1X_TREX_INVISIBLE)
             self._driver.execute_script(self._RESET_2X_TREX_INVISIBLE)
         
-        self._driver.execute_script("Runner.config.ACCELERATION=0")
+        acceleration_script='Runner.config.ACCELERATION='+config['GAME'].get('acceleration')
+        self._driver.execute_script(acceleration_script)
+        
         self._driver.execute_script(self._INIT_SCRIPT)
 
         self._reward_if_well_done = config['GAME'].getfloat("reward_if_well_done")
@@ -128,6 +130,8 @@ class Game(object):
         return int(score)
 
     
+    def start(self):
+        return self._driver.execute_script("Runner.instance_.play()") 
 
     def pause(self):
         return self._driver.execute_script("Runner.instance_.stop()")

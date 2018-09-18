@@ -59,8 +59,7 @@ class DQNAgent(BaseAgent):
         self._gamma = config['DQN'].getfloat('gamma')
         self._momentum = config['DQN'].getfloat('momentum')
         self._lr = config['DQN'].getfloat('learning_rate')
-        self._final_epsilon = config['DQN'].getfloat('final_epsilon')
-        self._init_epsilon = config['DQN'].getfloat('init_epsilon')
+
         self._explore = config['DQN'].getint('explore')
         self._replay_memory_capacity = config['DQN'].getint('replay_memory_capacity')
         self._update_target_interval = config['DQN'].getint('update_target_interval')
@@ -75,8 +74,8 @@ class DQNAgent(BaseAgent):
         self._criterion = nn.SmoothL1Loss()
         self._optimizer = optim.RMSprop(self._policy_net.parameters(), momentum=self._momentum, lr=self._lr)
 
-    
-    # e-greedy exploration 
+    # e-greedy exploration
+
     def _get_action(self, epsilon, state):
         action_t = Action.DO_NOTHING
         if random.random() <= epsilon:
@@ -84,6 +83,19 @@ class DQNAgent(BaseAgent):
         else:
             q = self._policy_net(state.cuda())
             action_index = torch.argmax(q).tolist()
+
+        if action_index == 0:
+            action_t = Action.DO_NOTHING
+        else:
+            action_t = Action.JUMP
+        return action_t
+
+    # greedy policy
+    def _get_optimal_action(self, state):
+        action_t = Action.DO_NOTHING
+
+        q = self._policy_net(state.cuda())
+        action_index = torch.argmax(q).tolist()
         if action_index == 0:
             action_t = Action.DO_NOTHING
         else:
@@ -122,7 +134,6 @@ class DQNAgent(BaseAgent):
             # td(0)
             td_target[i][int(action_t)] = reward_t if terminal else reward_t + self._gamma*the_optimal_q_value_of_next_state.tolist()
 
-            
             predicted_Q_sa_t = self._policy_net(stack_t.cuda())
             q_value[i][int(action_t)] = predicted_Q_sa_t[int(action_t)]
 
@@ -160,8 +171,8 @@ class DQNAgent(BaseAgent):
             t = checkpoint['time_step']
             epoch = checkpoint['epoch']
             epsilon = checkpoint['epsilon']
-            highest_score= checkpoint['highest_score']
-            
+            highest_score = checkpoint['highest_score']
+
             state_dict = checkpoint['state_dict']
             self._policy_net.load_state_dict(state_dict)
 
@@ -194,7 +205,6 @@ class DQNAgent(BaseAgent):
 
             # run the selected action and observed next state and reward
             state_t1, reward_t, terminal, score_t = self._get_game_state(game, action_t)
-           
 
             # assemble the next state stack which contains the lastest 3 states and the next state
             the_most_most_recent_state_stack = self._get_most_recent_states(the_most_recent_state_stack, state_t1)
@@ -214,7 +224,7 @@ class DQNAgent(BaseAgent):
                 experience_batch = replay_memory.sample(self._batch_size)
                 loss = self._learn(experience_batch)
 
-                if t%  self._log_interval == 0:
+                if t % self._log_interval == 0:
                     print("t:", t, "epoch:", epoch, "loss:", loss)
 
                 if t % self._update_target_interval == 0:
@@ -233,6 +243,49 @@ class DQNAgent(BaseAgent):
                 game.resume()
 
                 epoch = epoch + 1
+            else:
+                the_most_recent_state_stack = the_most_most_recent_state_stack
+
+            t = t + 1
+
+    def play(self, game):
+
+        t = 0
+
+        state_dict = None
+
+        # resume from the checkpoint
+        checkpoint = self._get_checkpoint()
+        if checkpoint is None:
+            return
+
+        state_dict = checkpoint['state_dict']
+        self._policy_net.load_state_dict(state_dict)
+
+        # init the start state
+        state_t, _, _, _ = self._get_game_state(game, Action.DO_NOTHING)
+
+        # the first state stack containes the first 4 frames
+        initial_state_stack = torch.stack((state_t, state_t, state_t, state_t))
+
+        the_most_recent_state_stack = initial_state_stack
+
+        while (True):  # endless running
+            action_t = Action.DO_NOTHING
+
+            # choose an action epsilon greedy
+            if t % self._frame_per_action == 0:  # parameter to skip frames for actions
+                action_t = self._get_optimal_action(the_most_recent_state_stack)
+
+            # run the selected action and observed next state and reward
+            state_t1, _, terminal, _ = self._get_game_state(game, action_t)
+
+            # assemble the next state stack which contains the lastest 3 states and the next state
+            the_most_most_recent_state_stack = self._get_most_recent_states(the_most_recent_state_stack, state_t1)
+
+            if terminal:
+                the_most_recent_state_stack = initial_state_stack
+
             else:
                 the_most_recent_state_stack = the_most_most_recent_state_stack
 

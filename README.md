@@ -41,6 +41,12 @@ browser just as promoted in the terminal
 
 
 
+# Acceleration 
+
+
+
+# Who is the agent? 
+
 # On States
 1.Agents should construct their own state from their experience
 2.Agent state is a function of the previous state and the new observertion 
