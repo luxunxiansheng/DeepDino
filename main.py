@@ -46,7 +46,7 @@ def main():
     # prepare the Log for recording the RL procedure
     cfg = Utilis.config()
     logger = Logger.get_instance()
-    logger.create_log(cfg)
+    logger.create_log(cfg,'.dqn')
 
     # setup the GPU/CPU device
     if torch.cuda.is_available():
@@ -58,8 +58,8 @@ def main():
     try:
         if cfg['GLOBAL'].get('working_mode') == 'train':
             working_agent.train(game)
-        elif cfg['GLOBAL'].get('working_mode') =='play':
-            working_agent.play(game)
+        elif cfg['GLOBAL'].get('working_mode') =='replay':
+            working_agent.replay(game)
         else:
             pass
     finally:

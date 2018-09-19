@@ -36,6 +36,7 @@
 
 # Code referenced from https://github.com/yunjey/pytorch-tutorial/blob/master/tutorials/04-utils/tensorboard/logger.py
 from io import BytesIO
+import os
 from pathlib import Path
 
 import numpy as np
@@ -54,12 +55,12 @@ class Logger(object):
 
         return Logger._instance
 
-    def create_log(self, config):  # Explictly init the logger anyhow
+    def create_log(self, config,file_name_suffix=None):  # Explictly init the logger anyhow
 
-        log_dir = config["GAME"].get("game_log_file_path")
+        log_dir = os.path.join(config["GLOBAL"].get("game_log_file_path"),config["GLOBAL"].get("working_agent"))
 
         """Create a summary writer logging to log_dir."""
-        self.writer = tf.summary.FileWriter(log_dir)
+        self.writer = tf.summary.FileWriter(log_dir,filename_suffix=file_name_suffix)
 
     def __init__(self):
         if Logger._instance != None:

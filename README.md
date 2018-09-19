@@ -52,6 +52,11 @@ browser just as promoted in the terminal
 2.Agent state is a function of the previous state and the new observertion 
 (Refer to "Priciple of deep RL" ,David Silver )
 
+In this Dino game, the working state is actually a clip that includs four 
+consecutive frames , one latest frame + three preivous frames.(Refer to 
+the paper "Human-level control through deep reinforcement learning" )
+
+
 
 
 

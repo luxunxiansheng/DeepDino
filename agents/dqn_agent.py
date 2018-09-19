@@ -167,7 +167,7 @@ class DQNAgent(BaseAgent):
 
         # resume from the checkpoint
         checkpoint = self._get_checkpoint()
-        if checkpoint is not None:
+        if self._config['GLOBAL'].getboolean('resume') and checkpoint is not None:
             t = checkpoint['time_step']
             epoch = checkpoint['epoch']
             epsilon = checkpoint['epsilon']
@@ -248,7 +248,7 @@ class DQNAgent(BaseAgent):
 
             t = t + 1
 
-    def play(self, game):
+    def replay(self, game):
 
         t = 0
 
