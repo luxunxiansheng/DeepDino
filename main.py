@@ -43,26 +43,35 @@ from utils.utilis import Utilis
 
 def main():
 
-    # prepare the Log for recording the RL procedure
-    cfg = Utilis.config()
-    logger = Logger.get_instance()
-    logger.create_log(cfg,'.dqn')
-
     # setup the GPU/CPU device
     if torch.cuda.is_available():
         torch.cuda.set_device(int(Utilis.gpu_id_with_max_memory()))
 
+    # prepare the Log for recording the RL procedure
+    cfg = Utilis.config()
+      
+    working_mode = cfg['GLOBAL'].get('working_mode')
+    
     working_agent = BaseAgent.create(cfg)
-    game = Game(cfg)
+    game = Game(cfg)    
 
     try:
-        if cfg['GLOBAL'].get('working_mode') == 'train':
+        if working_mode == 'train':
+            print('******************The Dino is being trained by ' + cfg['GLOBAL'].get('working_agent') + '*************************')
+            
+            logger = Logger.get_instance()
+            logger.create_log(cfg,'.dqn_acc0')
             working_agent.train(game)
-        elif cfg['GLOBAL'].get('working_mode') =='replay':
+        
+        elif working_mode == 'replay':
+            print('******************The Dino is being replayed*************************')
             working_agent.replay(game)
         else:
-            pass
+            print("working mode is not found. Check the spelling of working mode in config.ini. ")
+            
+            
     finally:
+        print("Something goes wrong!")
         game.end()
 
 
