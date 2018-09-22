@@ -112,9 +112,9 @@ class BaseAgent(object):
                                         transforms.ToTensor()])
         return transform(screenshot)
 
-    def _get_game_state(self, game, action):
+    def _game_step(self, game, action):
 
-        screen_shot, reward, terminal, score = game.get_state(action)
+        screen_shot, reward, terminal, score = game.step(action)
         preprocessed_snapshot = self._preprocess_snapshot(screen_shot)
         return preprocessed_snapshot, torch.tensor(reward), torch.tensor(terminal), score
 

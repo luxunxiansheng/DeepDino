@@ -151,11 +151,11 @@ class DQNAgent(BaseAgent):
     def _update_target_net(self):
         self._target_net.load_state_dict(self._policy_net.state_dict())
 
-    def _get_most_recent_states(self, the_privous_most_recnent_frames, next_frame):
-        the_most_most_recent_frames = the_privous_most_recnent_frames.clone()
-        the_most_most_recent_frames[0:-1] = the_privous_most_recnent_frames[1:]
-        the_most_most_recent_frames[-1] = next_frame
-        return the_most_most_recent_frames
+    def _get_next_state(self, current_state, next_screenshot):
+        next_state = current_state.clone()
+        next_state[0:-1] = current_state[1:]
+        next_state[-1] = next_screenshot
+        return next_state
 
     def train(self, game):
 
@@ -181,13 +181,13 @@ class DQNAgent(BaseAgent):
 
         replay_memory = Replay_Memory(self._replay_memory_capacity)
 
-        # init the start state
-        state_t, _, _, _ = self._get_game_state(game, Action.DO_NOTHING)
+        
+        screenshot, _, _, _ = self._game_step(game, Action.DO_NOTHING)
 
-        # the first state stack containes the first 4 frames
-        initial_state_stack = torch.stack((state_t, state_t, state_t, state_t))
+        # the first state containes the first 4 frames
+        initial_state = torch.stack((screenshot, screenshot, screenshot, screenshot))
 
-        the_most_recent_state_stack = initial_state_stack
+        current_state = initial_state
 
         while (True):  # endless running
             loss = 0
@@ -197,27 +197,27 @@ class DQNAgent(BaseAgent):
 
             # choose an action epsilon greedy
             if t % self._frame_per_action == 0:  # parameter to skip frames for actions
-                action_t = self._get_action(epsilon, the_most_recent_state_stack)
+                action_t = self._get_action(epsilon, current_state)
 
             # reduced the epsilon (exploration parameter) gradually
             if epsilon > self._final_epsilon:
                 epsilon -= (self._init_epsilon-self._final_epsilon) / self._explore
 
-            # run the selected action and observed next state and reward
-            state_t1, reward_t, terminal, score_t = self._get_game_state(game, action_t)
+            # run the selected action and observe next screenshot & reward
+            next_screentshot, reward_t, terminal, score_t = self._game_step(game, action_t)
 
-            # assemble the next state stack which contains the lastest 3 states and the next state
-            the_most_most_recent_state_stack = self._get_most_recent_states(the_most_recent_state_stack, state_t1)
+            # assemble the next state  which contains the lastest 3 screenshot  and the next screenshot
+            next_state = self._get_next_state(current_state, next_screentshot)
 
             """ 
-            grid_img = torchvision.utils.make_grid(the_most_recent_state_stack, 4, padding=10)
-            grid_img2 = torchvision.utils.make_grid(the_most_most_recent_state_stack, 4, padding=10)
+            grid_img = torchvision.utils.make_grid(current_state, 4, padding=10)
+            grid_img2 = torchvision.utils.make_grid(next_state, 4, padding=10)
             self._show(grid_img,grid_img2) 
             
             """
 
             # store the transition in experience_replay_memory
-            replay_memory.push((the_most_recent_state_stack, action_t, reward_t, the_most_most_recent_state_stack, terminal))
+            replay_memory.push((current_state, action_t, reward_t, next_state, terminal))
 
             # Not to learn and log until the replay memory is not too empty
             if replay_memory.size() > self._observations:
@@ -231,7 +231,7 @@ class DQNAgent(BaseAgent):
                     self._update_target_net()
 
             if terminal:
-                the_most_recent_state_stack = initial_state_stack
+                current_state = initial_state
 
                 if score_t > highest_score:
                     highest_score = score_t
@@ -244,7 +244,7 @@ class DQNAgent(BaseAgent):
 
                 epoch = epoch + 1
             else:
-                the_most_recent_state_stack = the_most_most_recent_state_stack
+                initial_state = next_state
 
             t = t + 1
 
@@ -263,30 +263,30 @@ class DQNAgent(BaseAgent):
         self._policy_net.load_state_dict(state_dict)
 
         # init the start state
-        state_t, _, _, _ = self._get_game_state(game, Action.DO_NOTHING)
+        screenshot, _, _, _ = self._game_step(game, Action.DO_NOTHING)
 
         # the first state stack containes the first 4 frames
-        initial_state_stack = torch.stack((state_t, state_t, state_t, state_t))
+        initial_state = torch.stack((screenshot, screenshot, screenshot, screenshot))
 
-        the_most_recent_state_stack = initial_state_stack
+        current_state = initial_state
 
         while (True):  # endless running
             action_t = Action.DO_NOTHING
 
             # choose an action epsilon greedy
             if t % self._frame_per_action == 0:  # parameter to skip frames for actions
-                action_t = self._get_optimal_action(the_most_recent_state_stack)
+                action_t = self._get_optimal_action(current_state)
 
             # run the selected action and observed next state and reward
-            state_t1, _, terminal, _ = self._get_game_state(game, action_t)
+            next_screenshot, _, terminal, _ = self._game_step(game, action_t)
 
             # assemble the next state stack which contains the lastest 3 states and the next state
-            the_most_most_recent_state_stack = self._get_most_recent_states(the_most_recent_state_stack, state_t1)
+            next_state = self._get_next_state(current_state, next_screenshot)
 
             if terminal:
-                the_most_recent_state_stack = initial_state_stack
+                current_state = initial_state
 
             else:
-                the_most_recent_state_stack = the_most_most_recent_state_stack
+                current_state = next_state
 
             t = t + 1

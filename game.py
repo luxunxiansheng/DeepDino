@@ -91,20 +91,20 @@ class Game(object):
         self._reward_if_well_done = config['GAME'].getfloat("reward_if_well_done")
         self._reward_if_crash=config['GAME'].getfloat("reward_if_crash")
 
-    def get_state(self, action):
+    def step(self, action):
         score = self._get_score()
         reward = self._reward_if_well_done
         is_over = False  # game over
         if action == Action.JUMP:
             self._press_up()
 
-        image = self._grab_screen()
+        screenshot = self._grab_screen()
 
         if self._get_crashed():
             self.restart()
             reward = self._reward_if_crash
             is_over = True
-        return image, reward, is_over,score  # return the Experience tuple
+        return screenshot, reward, is_over,score  # return the Experience tuple
 
     def _get_crashed(self):
         return self._driver.execute_script("return Runner.instance_.crashed")
