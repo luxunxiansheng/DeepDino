@@ -1,6 +1,23 @@
 # Overview
-A carton game powered by deep reinforcement  learning algorithm 
-A playground to try various RL algorithms 
+Deep Reinforcement learning ,which is very different from supervisored 
+learning and unsupervisored learning ,is a great methodolgy for machine
+to minic the way how human to interact with the world and  eventually 
+evolve to AI somehow. After decades of development, there have been
+many workable alorithms,say, SARSA,Q-Learning,etc.. In particular ,
+when deep networks come into play, some classic reinforcment learning 
+algorithms suddenly find a new way to be able to make magic happen.
+Alphago was belived to be marked as one of milestones in machine learning
+history because the deep reinforcment learning behind showed the amazing 
+power which was never expected for most of us. A machine defeated a 
+human champion in GO game. It is really amazing!
+
+To understand those reinforcement learning, I know openAI' Gym  has provided
+a cool platform to test algorithms ,but I prefer one that is more customizable,
+easier to control,and more fun to work with. Finally,I decided to build one.
+I found the game from the blog post "Build an AI to play Dino Run 
+https://blog.paperspace.com/dino-run/" and re-work on it. My plan is to setup
+a simple framework for people to easily try various RL algorithms. It may be 
+a long jounery, but we have been on the way.  
 
 
 # Programming Philosophy 
@@ -38,11 +55,24 @@ browser just as promoted in the terminal
 
 
 # Visible or Invisible
-
+It was thought that the dino carton image in the screenshot is  redundant for the traning and 
+the deep network won't get much informantion from it because the dino icon is almost identical 
+among all of the screenshots. We take an experiment to hide the dino by setting the icon invisible.
+The result shows our original thought is wrong. The deep network seems getting  a lot of info 
+from the dino carton image. It is worth to try by yourself and see what may happen.
 
 
 # Acceleration 
+When replay the game with  a pretrained network that is fit  by different dino running speed,the
+peformance will degrade badly. Different accelerations mean non-stationary random process?
 
+
+
+
+# Double DQN and DQN
+Based on our experiments, it seems the Double DQN is not necessarily better than DDQN. This maybe 
+the expected observation in Dino game in that there is only two actions and the over max is not 
+so seriouis as those with large action space.
 
 
 # Who is the agent? 
@@ -53,7 +83,7 @@ browser just as promoted in the terminal
 (Refer to "Priciple of deep RL" ,David Silver )
 
 In this Dino game, the working state is actually a clip that includs four 
-consecutive frames , one latest frame + three preivous frames.(Refer to 
+consecutive frames , three preivous frames+one latest frame.(Refer to 
 the paper "Human-level control through deep reinforcement learning" )
 
 
