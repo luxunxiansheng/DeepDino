@@ -55,7 +55,7 @@ from utils.utilis import Utilis
 class BaseAgent(object):
     @staticmethod
     def create(config):
-        if config['GLOBAL']['working_agent'] == 'DQNAgent':
+        if config['GLOBAL']['working_agent'] == 'DQNAgent': # maybe better to use the type() to get the name,but this is just ok .
             from agents.dqn_agent import DQNAgent   # dynamic import. Refer to the Item 52: know how to break circular dependencey in book  "Effective Python"
             return DQNAgent(config)
 
@@ -116,6 +116,7 @@ class BaseAgent(object):
 
         screen_shot, reward, terminal, score = game.step(action)
         preprocessed_snapshot = self._preprocess_snapshot(screen_shot)
+
         return preprocessed_snapshot, torch.tensor(reward), torch.tensor(terminal), score
 
     # A helper mehtod to test the screenshots  during training

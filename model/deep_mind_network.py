@@ -41,11 +41,11 @@ import torch.optim as optim
 from torch.autograd import Variable
 from torch.nn import functional as F
 
-from model.base_network import BaseNetwork
+from model.deep_mind_network_base import DeepMindNetworkBase
 from utils.utilis import Utilis
 
 
-class DeepMindNetwork(nn.Module, BaseNetwork):
+class DeepMindNetwork(DeepMindNetworkBase):
     '''
     The convolution newtork proposed by Mnih at al(2015)@deepmind
     in the paper "Playing Atari with Deep Reinforcement 
@@ -54,45 +54,13 @@ class DeepMindNetwork(nn.Module, BaseNetwork):
     '''
 
     def __init__(self, input_channels, output_size):
-
-        super(DeepMindNetwork, self).__init__()
-
-        self._input_channels = input_channels
-        self._output_size = output_size
-
-        self.conv1 = nn.Sequential(
-            Utilis.layer_init(nn.Conv2d(self._input_channels, 32, kernel_size=8, stride=4)),
-            nn.ReLU()
-        )
-
-        self.conv2 = nn.Sequential(
-            Utilis.layer_init(nn.Conv2d(32, 64, kernel_size=4, stride=2)),
-            nn.ReLU()
-        )
-
-        self.conv3 = nn.Sequential(
-            Utilis.layer_init(nn.Conv2d(64, 64, kernel_size=3, stride=1)),
-            nn.ReLU()
-        )
-
-        self.fc1 = nn.Sequential(
-            Utilis.layer_init(nn.Linear(7*7*64, 512)),
-            nn.ReLU()
-        )
-
-        self.fc2 = nn.Sequential(
+        super(DeepMindNetwork, self).__init__(input_channels,output_size)
+        self._base = super(DeepMindNetwork,self)
+        self._header = nn.Sequential(
             Utilis.layer_init(nn.Linear(512, self._output_size))
         )
 
     def forward(self, input):
-        x = torch.transpose(input, 0, 1)
-        x = self.conv1(x)
-        x = self.conv2(x)
-        x = self.conv3(x)
-
-        x = x.view(1, -1)
-
-        x = self.fc1(x)
-        x = self.fc2(x)
-
+        x = self._base.forward(input)
+        x = self._header(x)
         return torch.squeeze(x)

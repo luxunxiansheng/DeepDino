@@ -45,7 +45,7 @@ import torchvision
 from agents.base_agent import BaseAgent
 from common.action import Action
 from common.replay_memory import Replay_Memory
-from model.base_network import BaseNetwork
+from model.deep_mind_network_base import DeepMindNetworkBase
 from utils.utilis import Utilis
 
 
@@ -68,8 +68,8 @@ class DQNAgent(BaseAgent):
 
         self._network_name = config['DQN'].get('model_name')
 
-        self._policy_net = BaseNetwork.create(self._network_name, input_channels=self._image_stack_size, output_size=self._action_space).cuda()
-        self._target_net = BaseNetwork.create(self._network_name, input_channels=self._image_stack_size, output_size=self._action_space).cuda()
+        self._policy_net = DeepMindNetworkBase.create(self._network_name, input_channels=self._image_stack_size, output_size=self._action_space).cuda()
+        self._target_net = DeepMindNetworkBase.create(self._network_name, input_channels=self._image_stack_size, output_size=self._action_space).cuda()
 
         self._criterion = nn.SmoothL1Loss()
         self._optimizer = optim.RMSprop(self._policy_net.parameters(), momentum=self._momentum, lr=self._lr)

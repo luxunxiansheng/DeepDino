@@ -34,10 +34,17 @@
 # /
 
 
-# A side note:To prevent the circular dependency , take advantage of dynamic import.
-# Refer to the Item 52: know how to break circular dependencey in book  "Effective Python"
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+from torch.autograd import Variable
+from torch.nn import functional as F
 
-class BaseNetwork:
+from utils.utilis import Utilis
+
+
+class DeepMindNetworkBase(nn.Module):
     @staticmethod
     def create(network, input_channels, output_size):
         if network == 'DeepMindNetwork':
@@ -47,5 +54,49 @@ class BaseNetwork:
             from model.deep_mind_network_with_batchnormal import DeepMindNetworkWithBatchNormal
             return DeepMindNetworkWithBatchNormal(input_channels, output_size)
 
-    def __init__(self, config):
-        pass
+    '''
+    The convolution newtork proposed by Mnih at al(2015) in the paper "Playing Atari with Deep
+    Reinforcement Learning. We split the last layer of orignal network in the paper as the header
+    and keep the remains into the base part.  Here is the base part."
+    '''
+
+    def __init__(self, input_channels, output_size):
+
+        super(DeepMindNetworkBase, self).__init__()
+
+        self._input_channels = input_channels
+        self._output_size = output_size
+
+        self._conv1 = nn.Sequential(
+            Utilis.layer_init(nn.Conv2d(self._input_channels, 32, kernel_size=8, stride=4)),
+            nn.ReLU()
+        )
+
+        self._conv2 = nn.Sequential(
+            Utilis.layer_init(nn.Conv2d(32, 64, kernel_size=4, stride=2)),
+            nn.ReLU()
+        )
+
+        self._conv3 = nn.Sequential(
+            Utilis.layer_init(nn.Conv2d(64, 64, kernel_size=3, stride=1)),
+            nn.ReLU()
+        )
+
+        self._fc1 = nn.Sequential(
+            Utilis.layer_init(nn.Linear(7*7*64, 512)),
+            nn.ReLU()
+        )
+        
+      
+    
+    def forward(self, input):
+        x = torch.transpose(input, 0, 1)
+        x = self._conv1(x)
+        x = self._conv2(x)
+        x = self._conv3(x)
+
+        x = x.view(1, -1)
+
+        x = self._fc1(x)
+
+        return x
