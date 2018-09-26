@@ -36,10 +36,6 @@
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-from torch.autograd import Variable
-from torch.nn import functional as F
 
 from model.deep_mind_network_base import DeepMindNetworkBase
 from utils.utilis import Utilis
@@ -47,14 +43,13 @@ from utils.utilis import Utilis
 
 class DeepMindNetwork(DeepMindNetworkBase):
     '''
-    The convolution newtork proposed by Mnih at al(2015)@deepmind
-    in the paper "Playing Atari with Deep Reinforcement 
-    Learning"
-
+    The newtork used by Mnih at al(2015)@deepmind in the paper "Playing Atari with Deep Reinforcement 
+    Learning". The output is Q(s,a) value.
     '''
 
     def __init__(self, input_channels, output_size):
-        super(DeepMindNetwork, self).__init__(input_channels,output_size)
+        super(DeepMindNetwork, self).__init__(input_channels)
+        self._output_size = output_size
         self._base = super(DeepMindNetwork,self)
         self._header = nn.Sequential(
             Utilis.layer_init(nn.Linear(512, self._output_size))

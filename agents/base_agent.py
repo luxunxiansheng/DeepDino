@@ -46,7 +46,7 @@ import torchvision
 from PIL import Image
 from torchvision import transforms
 
-from common.action import Action
+from common.exceptions import NoSuchAgentError
 from common.replay_memory import Replay_Memory
 from utils.logger import Logger
 from utils.utilis import Utilis
@@ -55,9 +55,23 @@ from utils.utilis import Utilis
 class BaseAgent(object):
     @staticmethod
     def create(config):
-        if config['GLOBAL']['working_agent'] == 'DQNAgent': # maybe better to use the type() to get the name,but this is just ok .
+        working_agent = config['GLOBAL']['working_agent']
+        
+        if working_agent is None:
+            return None
+
+        if  working_agent == 'DQNAgent':  # maybe better to use the type() to get the name,but this is just ok .
             from agents.dqn_agent import DQNAgent   # dynamic import. Refer to the Item 52: know how to break circular dependencey in book  "Effective Python"
             return DQNAgent(config)
+
+        if working_agent == 'REINFORCEAgent':
+            from agents.reinforce_agent import REINFORCEAgent
+            return REINFORCEAgent(config)
+
+        return None
+                
+
+            
 
     def __init__(self, config):
         self._config = config
@@ -69,6 +83,7 @@ class BaseAgent(object):
         self._my_name = self._config['GLOBAL']['working_agent']
         self._final_epsilon = config['GLOBAL'].getfloat('final_epsilon')
         self._init_epsilon = config['GLOBAL'].getfloat('init_epsilon')
+        self._gamma = config['GLOBAL'].getfloat('gamma')
 
     def _get_checkpoint(self):
 
@@ -83,18 +98,8 @@ class BaseAgent(object):
             final_checkpoint = loaded_checkpoint
 
         return final_checkpoint
-
-    def _set_checkpoint(self, t, epoch, epsilon, highest_score, score_t, state_dict):
-
-        checkpoint = {
-            'time_step': t,
-            'epoch': epoch,
-            'epsilon': epsilon,
-            'highest_score': highest_score,
-            'state_dict': state_dict
-        }
-
-        Utilis.save_checkpoint(checkpoint, highest_score > score_t, self._my_name)
+  
+       
 
     def _tensorboard_log(self, t, epoch, highest_score, score_t, loss, model):
         info = {'score': score_t, 'hi_score': highest_score, 'loss': loss}
@@ -112,13 +117,19 @@ class BaseAgent(object):
                                         transforms.ToTensor()])
         return transform(screenshot)
 
-    def _game_step(self, game, action):
+    def _game_step_forward(self, game, action):
 
         screen_shot, reward, terminal, score = game.step(action)
         preprocessed_snapshot = self._preprocess_snapshot(screen_shot)
 
         return preprocessed_snapshot, torch.tensor(reward), torch.tensor(terminal), score
 
+    def _get_next_state(self, current_state, next_screenshot):
+        next_state = current_state.clone()
+        next_state[0:-1] = current_state[1:]
+        next_state[-1] = next_screenshot
+        return next_state
+    
     # A helper mehtod to test the screenshots  during training
     def _show(self, img, img2):
         npimg1 = img.numpy()

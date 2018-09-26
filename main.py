@@ -39,6 +39,7 @@ from agents.base_agent import BaseAgent
 from game import Game
 from utils.logger import Logger
 from utils.utilis import Utilis
+from common.exceptions import NoSuchAgentError
 
 
 def main():
@@ -50,17 +51,24 @@ def main():
     # prepare the Log for recording the RL procedure
     cfg = Utilis.config()
       
-    working_mode = cfg['GLOBAL'].get('working_mode')
-    
-    working_agent = BaseAgent.create(cfg)
-    game = Game(cfg)    
+    game = None
 
     try:
+        working_mode = cfg['GLOBAL'].get('working_mode')
+    
+        working_agent = BaseAgent.create(cfg)
+
+        if working_agent is None:
+             print("Working Agent not found.")
+             return
+
+        game = Game(cfg)    
+        
         if working_mode == 'train':
             print('******************The Dino is being trained by ' + cfg['GLOBAL'].get('working_agent') + '*************************')
             
             logger = Logger.get_instance()
-            logger.create_log(cfg,'.dqn_acc0')
+            logger.create_log(cfg)
             working_agent.train(game)
         
         elif working_mode == 'replay':
@@ -68,11 +76,11 @@ def main():
             working_agent.replay(game)
         else:
             print("working mode is not found. Check the spelling of working mode in config.ini. ")
-            
+        
             
     finally:
-        print("Something goes wrong!")
-        game.end()
+        if game is not None:
+            game.end()
 
 
 if __name__ == '__main__':

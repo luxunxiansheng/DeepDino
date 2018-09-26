@@ -56,14 +56,14 @@ class DQNAgent(BaseAgent):
 
         self._batch_size = config['DQN'].getint('batch')
         self._isDQN = config['DQN'].getboolean('dqn')
-        self._gamma = config['DQN'].getfloat('gamma')
+
         self._momentum = config['DQN'].getfloat('momentum')
         self._lr = config['DQN'].getfloat('learning_rate')
 
         self._explore = config['DQN'].getint('explore')
         self._replay_memory_capacity = config['DQN'].getint('replay_memory_capacity')
         self._update_target_interval = config['DQN'].getint('update_target_interval')
-        self._frame_per_action = config['DQN'].getint('frame_per_action')
+
         self._observations = config['DQN'].getint('observations')
 
         self._network_name = config['DQN'].get('model_name')
@@ -151,14 +151,7 @@ class DQNAgent(BaseAgent):
     def _update_target_net(self):
         self._target_net.load_state_dict(self._policy_net.state_dict())
 
-    def _get_next_state(self, current_state, next_screenshot):
-        next_state = current_state.clone()
-        next_state[0:-1] = current_state[1:]
-        next_state[-1] = next_screenshot
-        return next_state
-
     def train(self, game):
-
         epsilon = self._init_epsilon
         t = 0
         epoch = 0
@@ -181,8 +174,7 @@ class DQNAgent(BaseAgent):
 
         replay_memory = Replay_Memory(self._replay_memory_capacity)
 
-        
-        screenshot, _, _, _ = self._game_step(game, Action.DO_NOTHING)
+        screenshot, _, _, _ = self._game_step_forward(game, Action.DO_NOTHING)
 
         # the first state containes the first 4 frames
         initial_state = torch.stack((screenshot, screenshot, screenshot, screenshot))
@@ -191,20 +183,18 @@ class DQNAgent(BaseAgent):
 
         while (True):  # endless running
             loss = 0
-
             reward_t = 0
             action_t = Action.DO_NOTHING
 
             # choose an action epsilon greedy
-            if t % self._frame_per_action == 0:  # parameter to skip frames for actions
-                action_t = self._get_action(epsilon, current_state)
+            action_t = self._get_action(epsilon, current_state)
 
             # reduced the epsilon (exploration parameter) gradually
             if epsilon > self._final_epsilon:
                 epsilon -= (self._init_epsilon-self._final_epsilon) / self._explore
 
             # run the selected action and observe next screenshot & reward
-            next_screentshot, reward_t, terminal, score_t = self._game_step(game, action_t)
+            next_screentshot, reward_t, terminal, score_t = self._game_step_forward(game, action_t)
 
             # assemble the next state  which contains the lastest 3 screenshot  and the next screenshot
             next_state = self._get_next_state(current_state, next_screentshot)
@@ -232,19 +222,25 @@ class DQNAgent(BaseAgent):
 
             if terminal:
                 current_state = initial_state
+                is_best=False
 
                 if score_t > highest_score:
                     highest_score = score_t
-
-                game.pause()
-                # log and save the checkpoint
-                self._set_checkpoint(t, epoch, epsilon, highest_score, score_t, self._policy_net.state_dict())
+                    is_best=True
+                          
+                checkpoint = {
+                    'time_step': t,
+                    'epoch': epoch,
+                    'epsilon': epsilon,
+                    'highest_score': highest_score,
+                    'state_dict': self._policy_net.state_dict()
+                }
+                Utilis.save_checkpoint(checkpoint, is_best,self._my_name)
                 self._tensorboard_log(t, epoch, highest_score, score_t, loss, self._policy_net)
-                game.resume()
-
+               
                 epoch = epoch + 1
             else:
-                initial_state = next_state
+                current_state = next_state
 
             t = t + 1
 

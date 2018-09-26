@@ -50,9 +50,6 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
-from common.action import Action
-
-
 class Game(object):
 
     _INIT_SCRIPT = "document.getElementsByClassName('runner-canvas')[0].id = 'runner-canvas'"
@@ -91,11 +88,14 @@ class Game(object):
         self._reward_if_well_done = config['GAME'].getfloat("reward_if_well_done")
         self._reward_if_crash=config['GAME'].getfloat("reward_if_crash")
 
+    
+    
+    # 0: do_nothing, 1: jump
     def step(self, action):
         score = self._get_score()
         reward = self._reward_if_well_done
         is_over = False  # game over
-        if action == Action.JUMP:
+        if action == 1:
             self._press_up()
 
         screenshot = self._grab_screen()

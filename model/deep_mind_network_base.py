@@ -36,11 +36,6 @@
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-from torch.autograd import Variable
-from torch.nn import functional as F
-
 from utils.utilis import Utilis
 
 
@@ -50,9 +45,12 @@ class DeepMindNetworkBase(nn.Module):
         if network == 'DeepMindNetwork':
             from model.deep_mind_network import DeepMindNetwork
             return DeepMindNetwork(input_channels, output_size)
-        if network == 'DeepMindNetworkWithBatchNormal':
-            from model.deep_mind_network_with_batchnormal import DeepMindNetworkWithBatchNormal
-            return DeepMindNetworkWithBatchNormal(input_channels, output_size)
+        if network == 'CategoricalNetwork':
+            from model.categorical_network import CategoricalNetwork
+            return CategoricalNetwork(input_channels, output_size)
+
+        return None    
+        
 
     '''
     The convolution newtork proposed by Mnih at al(2015) in the paper "Playing Atari with Deep
@@ -60,13 +58,12 @@ class DeepMindNetworkBase(nn.Module):
     and keep the remains into the base part.  Here is the base part."
     '''
 
-    def __init__(self, input_channels, output_size):
+    def __init__(self, input_channels):
 
         super(DeepMindNetworkBase, self).__init__()
 
         self._input_channels = input_channels
-        self._output_size = output_size
-
+       
         self._conv1 = nn.Sequential(
             Utilis.layer_init(nn.Conv2d(self._input_channels, 32, kernel_size=8, stride=4)),
             nn.ReLU()
