@@ -43,7 +43,6 @@ import torch.optim as optim
 import torchvision
 
 from agents.base_agent import BaseAgent
-from common.action import Action
 from common.replay_memory import Replay_Memory
 from model.deep_mind_network_base import DeepMindNetworkBase
 from utils.utilis import Utilis
@@ -77,30 +76,19 @@ class DQNAgent(BaseAgent):
     # e-greedy exploration
 
     def _get_action(self, epsilon, state):
-        action_t = Action.DO_NOTHING
         if random.random() <= epsilon:
-            action_index = random.randrange(self._action_space)
+            return  random.randrange(self._action_space)
         else:
             q = self._policy_net(state.cuda())
-            action_index = torch.argmax(q).tolist()
-
-        if action_index == 0:
-            action_t = Action.DO_NOTHING
-        else:
-            action_t = Action.JUMP
-        return action_t
+            return  torch.argmax(q).tolist()
+       
 
     # greedy policy
     def _get_optimal_action(self, state):
-        action_t = Action.DO_NOTHING
-
+        
         q = self._policy_net(state.cuda())
-        action_index = torch.argmax(q).tolist()
-        if action_index == 0:
-            action_t = Action.DO_NOTHING
-        else:
-            action_t = Action.JUMP
-        return action_t
+        return  torch.argmax(q).tolist()
+      
 
     def _predict_optimal_Q_value_with_DoubleDQN(self, state_t1):
         # predict the q value of the next state with the policy network
@@ -174,7 +162,7 @@ class DQNAgent(BaseAgent):
 
         replay_memory = Replay_Memory(self._replay_memory_capacity)
 
-        screenshot, _, _, _ = self._game_step_forward(game, Action.DO_NOTHING)
+        screenshot, _, _, _ = self._game_step_forward(game, 0)
 
         # the first state containes the first 4 frames
         initial_state = torch.stack((screenshot, screenshot, screenshot, screenshot))
@@ -184,7 +172,7 @@ class DQNAgent(BaseAgent):
         while (True):  # endless running
             loss = 0
             reward_t = 0
-            action_t = Action.DO_NOTHING
+            action_t =0
 
             # choose an action epsilon greedy
             action_t = self._get_action(epsilon, current_state)

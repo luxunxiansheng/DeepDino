@@ -141,6 +141,10 @@ class REINFORCEAgent(BaseAgent):
         self._optimizer.zero_grad()
         policy_loss = torch.stack(policy_loss,dim=0).sum()
         policy_loss.backward()
+
+        for param in self._policy_net.parameters():
+            param.grad.data.clamp_(-1, 1)
+
         self._optimizer.step()
 
         return policy_loss.tolist()
