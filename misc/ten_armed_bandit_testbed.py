@@ -62,7 +62,7 @@ class Bandit:
     # @initial: initial estimation for each action
     # @step_size: constant step size for updating estimations
     
-    def __init__(self, k_arm=10, initial=0., step_size=0.1):
+    def __init__(self, k_arm=3, initial=0., step_size=0.1):
         self.k = k_arm
         self.step_size = step_size
         self.indices = np.arange(self.k)
@@ -71,67 +71,93 @@ class Bandit:
                 
         # real reward for each action , a nomral distribution
         self.q_true = np.random.randn(self.k)
-        
-        plt.plot(self.q_true)
-        plt.ylabel('q_true')
-        plt.savefig('/home/lb/workspace/Dino/results/q_true.png')
 
-        plt.close()
-        
+               
 
     def reset(self):
        
+        self.instant_reward= np.zeros(self.k)
         # estimation for each action
         self.q_estimation = np.zeros(self.k) 
+       
+        self.action_prob = np.exp(self.q_estimation) / np.sum(np.exp(self.q_estimation))
 
         # # of chosen times for each action
         self.action_count = np.zeros(self.k)
 
         self.best_action = np.argmax(self.q_true)
 
+        self.instant_reward= np.zeros(self.k)
+
     # get an action for this bandit with softmax policy
     def act(self):
-        exp_est = np.exp(self.q_estimation)
-        self.action_prob = exp_est / np.sum(exp_est)
-
-        """ plt.plot(self.action_prob)
-        plt.ylabel('Prob.')
-        plt.savefig('/home/lb/workspace/Dino/results/prob.png')
-        plt.close() """
-
         return np.random.choice(self.indices, p=self.action_prob)
     
     # take an action, update estimation for this action
     def step(self, action):
+         
+        plt.ion()     
+       
         # generate the reward under N(real reward, 1)
-        reward = np.random.randn() + self.q_true[action]
-        #reward = self.q_true[action]
+        reward = 50*np.random.randn() +self.q_true[action]
+        
+        self.instant_reward[action]= reward
+
         self.time += 1
         self.average_reward =(self.time - 1.0) / self.time * self.average_reward + reward / self.time
         self.action_count[action] += 1
 
-        
         one_hot = np.zeros(self.k)
         one_hot[action] = 1
         baseline = self.average_reward
+        
+        f3=plt.subplot(413)
+        f3.clear()
+        f3.plot(self.q_estimation)
+        plt.ylabel('Previous Esit.')
+        
         #
-        self.q_estimation = self.q_estimation + self.step_size * (reward - baseline) * (one_hot - self.action_prob)
+        self.q_estimation = self.q_estimation + self.step_size * (reward -baseline) * (one_hot - self.action_prob)
+
+        exp_est = np.exp(self.q_estimation)
+        self.action_prob = exp_est / np.sum(exp_est)
+
+        f1=plt.subplot(411)
+        f1.clear() 
+        f1.plot(self.q_true)
+        plt.ylabel('q_true')
+        
+        f2=plt.subplot(412)
+        f2.clear()
+        f2.plot(self.instant_reward-self.average_reward)
+        plt.ylabel('Reward')
 
         
+
+        f3=plt.subplot(414)
+        f3.clear()
+        f3.plot(self.q_estimation)
+        plt.ylabel('Esti.')
+
+        plt.pause(0.001)
+        plt.show()
         
+
+        
+
         return reward
    
 
 def main():
-    runs = 2000
-    time = 2000
+    runs = 100
+    time = 1000
     bandit = Bandit()
     best_action_counts = np.zeros((runs, time))
     rewards = np.zeros(best_action_counts.shape)
 
     for run in tqdm(range(runs)):
         bandit.reset()
-        for time_step in range(time):
+        for time_step in tqdm(range(time)):
             action = bandit.act()
             reward = bandit.step(action)
             rewards[run, time_step] = reward
@@ -144,7 +170,7 @@ def main():
     plt.plot(best_action_counts)
     plt.xlabel('Steps')
     plt.ylabel('% Optimal action')
-    plt.savefig('/home/lb/workspace/Dino/results/bandit.png')
+    plt.savefig('C:/Data/OrNot/workspace/DeepReinforcementLearningPlayground/results/bandit.png')
 
     plt.close()
     
