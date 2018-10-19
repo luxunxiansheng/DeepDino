@@ -75,10 +75,9 @@ class REINFORCEAgent(BaseAgent):
                 current_state = self._get_next_state(current_state, next_screentshot)
                 t=t+1
 
-        return episode_log_prob_actions, episode_rewards, score_t,t
+        return episode_log_prob_actions,episode_rewards,score_t,t
 
     def train(self, game):
-
         t = 0
         epoch = 0
         highest_score = 0
@@ -99,7 +98,6 @@ class REINFORCEAgent(BaseAgent):
 
         # run episodes again and again
         while (True):
-            
             episode_log_prob_actions, episode_rewards, final_score ,t = self._run_episode(game, t,initial_state)
 
             is_best = False
@@ -154,5 +152,4 @@ class REINFORCEAgent(BaseAgent):
         probs, log_probs = self._policy_net(state.cuda())
         m = Categorical(probs)
         action_index = m.sample()
-
         return log_probs[action_index.item()], action_index.item()

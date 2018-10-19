@@ -1,3 +1,40 @@
+# #### BEGIN LICENSE BLOCK #####
+ # Version: MPL 1.1/GPL 2.0/LGPL 2.1
+ #
+ # The contents of this file are subject to the Mozilla Public License Version
+ # 1.1 (the "License"); you may not use this file except in compliance with
+ # the License. You may obtain a copy of the License at
+ # http://www.mozilla.org/MPL/
+ #
+ # Software distributed under the License is distributed on an "AS IS" basis,
+ # WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
+ # for the specific language governing rights and limitations under the
+ # License.
+ #
+ #   
+ # Contributor(s): 
+ # 
+ #    Bin.Li (ornot2008@yahoo.com) 
+ #
+ #
+ # Alternatively, the contents of this file may be used under the terms of
+ # either the GNU General Public License Version 2 or later (the "GPL"), or
+ # the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
+ # in which case the provisions of the GPL or the LGPL are applicable instead
+ # of those above. If you wish to allow use of your version of this file only
+ # under the terms of either the GPL or the LGPL, and not to allow others to
+ # use your version of this file under the terms of the MPL, indicate your
+ # decision by deleting the provisions above and replace them with the notice
+ # and other provisions required by the GPL or the LGPL. If you do not delete
+ # the provisions above, a recipient may use your version of this file under
+ # the terms of any one of the MPL, the GPL or the LGPL.
+ #
+ # #### END LICENSE BLOCK #####
+ #
+ #/  
+
+
+
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,7 +51,7 @@ class Bandit:
         self._sigma=sigma
            
         # real reward for each action , a nomral distribution
-        self._q_true = [-1,0,1,1,2,3,4,5.1,4,3]
+        self._q_true = [-1,0,1,4,2,3,4,5.1,4,3]
         self._best_action = np.argmax(self._q_true)
     
     # take an action and return the reward 
@@ -79,9 +116,9 @@ class BanditAgent:
 
 
 def main():
-    epochs =5000
+    epochs =10000
     use_baseline = True
-    step_size= 0.0002
+    step_size= 0.005
     the_sigma= 50
 
     bandit = Bandit(sigma=the_sigma)
@@ -90,9 +127,10 @@ def main():
     fig = plt.figure()
       
     q_true_axes=fig.add_subplot(411)
+    q_true_axes.grid(True)
     q_true_axes.set_ylabel('true_q_value')
     q_true_axes.set_xlim([0,bandit.k_arm])
-    q_true_axes.plot(bandit.true_q_value)
+    q_true_axes.plot(bandit.true_q_value,'ro')
     
     prob_axes=fig.add_subplot(412)
     best_actions_axes=fig.add_subplot(413)
@@ -143,7 +181,7 @@ def main():
         bandit_agent.learn(action,reward,bandit_agent.average_reward,use_baseline)    
 
     st = datetime.datetime.fromtimestamp(time.time()).strftime('_%Y-%m-%d-%H-%M-%S')    
-    plt.savefig('C:/Data/OrNot/workspace/DeepReinforcementLearningPlayground/results/bandit'+st+'.png') 
+    plt.savefig('/home/lb/workspace/Dino/results/bandit'+st+'.png') 
 
     
 

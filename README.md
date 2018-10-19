@@ -1,3 +1,16 @@
+
+- [Overview](#overview)
+- [Programming Philosophy](#programming-philosophy)
+- [Visualization](#visualization)
+- [Visible or Invisible](#visible-or-invisible)
+- [Acceleration](#acceleration)
+- [Who is the agent?](#who-is-the-agent)
+- [On States](#on-states)
+- [Reinforcement Learning algorithm used in this project](#reinforcement-learning-algorithm-used-in-this-project)
+        - [1. Value based](#1-value-based)
+        - [2. Policy gradient](#2-policy-gradient)
+
+
 # Overview
 Deep Reinforcement learning ,which is very different from supervisored 
 learning and unsupervisored learning ,is a great methodolgy for machine
@@ -14,10 +27,10 @@ human champion in GO game. It is really amazing!
 To understand those reinforcement learning, I know openAI' Gym  has provided
 a cool platform to test algorithms ,but I prefer one that is more customizable,
 easier to control,and more fun to work with. Finally,I decided to build one.
-I found the game from the blog post "Build an AI to play Dino Run 
-https://blog.paperspace.com/dino-run/" and re-work on it. My plan is to setup
+I found the game from the blog post [Build an AI to play Dino Run](https://blog.paperspace.com/dino-run/) and re-work on it. My plan is to setup
 a simple framework for people to easily try various RL algorithms. It may be 
 a long jounery, but we have been on the way.  
+
 
 
 # Programming Philosophy 
@@ -38,8 +51,7 @@ OO is a swiss knife without any doubt.
 
 # Visualization 
 To monitor the training process and the visual the results , we take advantage of 
-the tensorboard as the toolkit.More specifically, we adopt the code posted in repo: 
-"https://github.com/yunjey/pytorch-tutorial/tree/master/tutorials/04-utils/tensorboard" 
+the tensorboard as the toolkit.More specifically, we adopt the code posted in [repo](https://github.com/yunjey/pytorch-tutorial/tree/master/tutorials/04-utils/tensorboard) 
 where the log entry is wrapped accroding to tensorflow Summary format as to be read by 
 tensorboard. 
 
@@ -68,13 +80,6 @@ peformance will degrade badly. Different accelerations mean non-stationary rando
 
 
 
-
-# Double DQN and DQN
-Based on our experiments, it seems the Double DQN is not necessarily better than DDQN. This maybe 
-the expected observation in Dino game in that there is only two actions and the over max is not 
-so seriouis as those with large action space.
-
-
 # Who is the agent? 
 
 # On States
@@ -86,7 +91,28 @@ In this Dino game, the working state is actually a clip that includs four
 consecutive frames , three preivous frames+one latest frame.(Refer to 
 the paper "Human-level control through deep reinforcement learning" )
 
+# Algorithms used in this project 
+
+###  1.Value based
+1.1 DQN  
+1.2 Double DQN
+
+
+> Based on our experiments, it seems the Double DQN is not necessarily better than DQN. This maybe the expected observation in Dino game for there are only two values in action space and the over max is not that seriouis as in a large action space.
+### 2. Policy gradient 
+2.1  REINFORCE  
+>REINFORCE (Monte-Carlo policy gradient) relies on an estimated return by Monte-Carlo methods using episode samples to update the policy parameter θ. REINFORCE works because the expectation of the sample gradient is equal to the actual gradient, that is, the sample gradient is a unbiased estimation of the actual gradient:
+$$\nabla_\theta J(\theta)= \mathbb{E}_\pi[Q^\pi(s, a) \nabla_\theta \ln \pi_\theta(a \vert s)] = \mathbb{E}_\pi[G_t\nabla_\theta \ln \pi_\theta(a \vert s)]$$   
+    
+> The algorithm is listed as below:  
+    >1. Init the policy parameters $\theta$ at random 
+    >2. Generate one trajectory on policy $\pi_\theta: S_1,A_1,R_1,S_2,A_2,....,S_T$
+    >3. For t= 1,2,....,T:  
+        1. Estimate the return $G_t$   
+        2. Update policy parameters: $\theta \leftarrow \theta + \alpha \gamma^t G_t \nabla_\theta \ln \pi_\theta(A_t \vert S_t)$ 
 
 
 
+
+   
 
