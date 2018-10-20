@@ -60,7 +60,7 @@ class REINFORCEAgent(BaseAgent):
         
 
     def _predict_state_value(self, state):
-        state_value = self._state_value_net(state)
+        state_value = self._state_value_net(state.cuda())
         return state_value
 
     def _run_episode(self, game, t, init_state):
@@ -73,7 +73,7 @@ class REINFORCEAgent(BaseAgent):
         # run one episode until done
         while (True):
 
-            state_value = self._predict_state_value(current_state).item()
+            state_value = self._predict_state_value(current_state)
             episode_state_value.append(state_value)
 
             log_prob_action, action_t = self._get_action(current_state)
@@ -121,7 +121,7 @@ class REINFORCEAgent(BaseAgent):
                 highest_score = final_score
                 is_best = True
 
-            loss = self._learn(episode_log_prob_actions, episode_rewards,episode_state_value)
+            loss = self._learn(episode_log_prob_actions, episode_rewards,episode_state_value,epoch)
 
             checkpoint = {
                 'time_step': t,
@@ -137,25 +137,27 @@ class REINFORCEAgent(BaseAgent):
 
             epoch = epoch + 1
 
-            # del episode_log_prob_actions[:]
-            # del episode_rewards[:]
-            # del episode_state_value[:]
+            
 
-    def _learn(self, episode_log_prob_actions, episode_rewards,epsode_state_value):
+    def _learn(self, episode_log_prob_actions, episode_rewards,epsode_state_value,epoch):
+        
+        eps= np.finfo(np.float32).eps.item()
         # the return at time t
         G_t = 0
         G_t_list = []
         for r in episode_rewards[::-1]:
             G_t = r + self._gamma * G_t
             G_t_list.insert(0, G_t)
-        G_t_tensor = torch.tensor(G_t_list)
+        G_t_tensor = torch.tensor(G_t_list).cuda()
+
+        G_t_tensor = (G_t_tensor-G_t_tensor.mean())/(G_t_tensor.std()+eps)
 
         policy_loss = []
         state_value_loss = []
         
         for state_value, log_prob, g in zip(epsode_state_value,episode_log_prob_actions,G_t_tensor):
             # subtract the state value from the G. 
-            policy_loss.append(-log_prob * (g - state_value).cuda())
+            policy_loss.append(-log_prob * (g - state_value.detach()))
             
             # a biased estimation of state value with the q value of a single trajectory 
             state_value_loss.append(F.smooth_l1_loss(state_value,g))
@@ -168,19 +170,16 @@ class REINFORCEAgent(BaseAgent):
             param.grad.data.clamp_(-1, 1)
         self._state_value_optimizer.step()
 
-
-
         
-        self._policy_optimizer.zero_grad()
-        policy_loss = torch.stack(policy_loss, dim=0).sum()
-        policy_loss.backward()
-        for param in self._policy_net.parameters():
-            param.grad.data.clamp_(-1, 1)
-        self._policy_optimizer.step()
+        if epoch % 1 == 0:
+            self._policy_optimizer.zero_grad()
+            policy_loss = torch.stack(policy_loss, dim=0).sum()
+            policy_loss.backward()
+            for param in self._policy_net.parameters():
+                param.grad.data.clamp_(-1, 1)
+            self._policy_optimizer.step()
 
-        
-
-        return policy_loss.tolist()
+        return state_value_loss.tolist()
 
     def _get_action(self, state):
         probs, log_probs = self._policy_net(state.cuda())
