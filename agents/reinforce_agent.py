@@ -35,6 +35,7 @@
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import Categorical
 
@@ -43,24 +44,38 @@ from model.deep_mind_network_base import DeepMindNetworkBase
 from utils.utilis import Utilis
 
 
-
 class REINFORCEAgent(BaseAgent):
     def __init__(self, config):
         super(REINFORCEAgent, self).__init__(config)
 
         self._lr = config['REINFOCE'].getfloat('learning_rate')
-        self._network_name = config['REINFOCE'].get('model_name')
 
-        self._policy_net = DeepMindNetworkBase.create(self._network_name, input_channels=self._image_stack_size, output_size=self._action_space).cuda()
-        self._optimizer = optim.Adam(self._policy_net.parameters(), lr=self._lr)
+        self._policy_network_name = config['REINFOCE'].get('policy_model_name')
+        self._policy_net = DeepMindNetworkBase.create(self._policy_network_name, input_channels=self._image_stack_size, output_size=self._action_space).cuda()
+        self._policy_optimizer = optim.Adam(self._policy_net.parameters(), lr=self._lr)
 
-    def _run_episode(self, game, t,init_state):
+        self._state_value_network_name = config['REINFOCE'].get('state_value_model_name')
+        self._state_value_net = DeepMindNetworkBase.create(self._state_value_network_name, input_channels=self._image_stack_size, output_size=1).cuda()
+        self._state_value_optimizer = optim.Adam(self._state_value_net.parameters(), lr=self._lr)
+        
+
+    def _predict_state_value(self, state):
+        state_value = self._state_value_net(state)
+        return state_value
+
+    def _run_episode(self, game, t, init_state):
+
         episode_log_prob_actions = []
         episode_rewards = []
+        episode_state_value=[]
 
         current_state = init_state
         # run one episode until done
         while (True):
+
+            state_value = self._predict_state_value(current_state).item()
+            episode_state_value.append(state_value)
+
             log_prob_action, action_t = self._get_action(current_state)
             episode_log_prob_actions.append(log_prob_action)
 
@@ -71,11 +86,11 @@ class REINFORCEAgent(BaseAgent):
             if terminal:
                 break
             else:
-                    # assemble the next state  which contains the lastest 3 screenshot  and the next screenshot
+                # assemble the next state  which contains the lastest 3 screenshot  and the next screenshot
                 current_state = self._get_next_state(current_state, next_screentshot)
-                t=t+1
+                t = t+1
 
-        return episode_log_prob_actions,episode_rewards,score_t,t
+        return episode_log_prob_actions, episode_rewards, episode_state_value,score_t, t
 
     def train(self, game):
         t = 0
@@ -98,14 +113,15 @@ class REINFORCEAgent(BaseAgent):
 
         # run episodes again and again
         while (True):
-            episode_log_prob_actions, episode_rewards, final_score ,t = self._run_episode(game, t,initial_state)
+            
+            episode_log_prob_actions, episode_rewards, episode_state_value,final_score, t = self._run_episode(game, t, initial_state)
 
             is_best = False
             if final_score > highest_score:
                 highest_score = final_score
                 is_best = True
 
-            loss = self._learn(episode_log_prob_actions, episode_rewards)
+            loss = self._learn(episode_log_prob_actions, episode_rewards,episode_state_value)
 
             checkpoint = {
                 'time_step': t,
@@ -121,30 +137,48 @@ class REINFORCEAgent(BaseAgent):
 
             epoch = epoch + 1
 
-            del episode_log_prob_actions[:]
-            del episode_rewards[:]
+            # del episode_log_prob_actions[:]
+            # del episode_rewards[:]
+            # del episode_state_value[:]
 
-    def _learn(self, episode_log_prob_actions, episode_rewards):
-        R = 0
-        policy_loss = []
-        rewards = []
-        eps = np.finfo(np.float32).eps.item()
+    def _learn(self, episode_log_prob_actions, episode_rewards,epsode_state_value):
+        # the return at time t
+        G_t = 0
+        G_t_list = []
         for r in episode_rewards[::-1]:
-            R = r + self._gamma * R
-            rewards.insert(0, R)
-        rewards = torch.tensor(rewards)
-        rewards = (rewards - rewards.mean()) / (rewards.std() + eps)
-        
-        for log_prob, reward in zip(episode_log_prob_actions, rewards):
-            policy_loss.append(-log_prob * reward.cuda())
-        self._optimizer.zero_grad()
-        policy_loss = torch.stack(policy_loss,dim=0).sum()
-        policy_loss.backward()
+            G_t = r + self._gamma * G_t
+            G_t_list.insert(0, G_t)
+        G_t_tensor = torch.tensor(G_t_list)
 
+        policy_loss = []
+        state_value_loss = []
+        
+        for state_value, log_prob, g in zip(epsode_state_value,episode_log_prob_actions,G_t_tensor):
+            # subtract the state value from the G. 
+            policy_loss.append(-log_prob * (g - state_value).cuda())
+            
+            # a biased estimation of state value with the q value of a single trajectory 
+            state_value_loss.append(F.smooth_l1_loss(state_value,g))
+
+        
+        self._state_value_optimizer.zero_grad()
+        state_value_loss = torch.stack(state_value_loss, dim=0).sum()
+        state_value_loss.backward()
+        for param in self._state_value_net.parameters():
+            param.grad.data.clamp_(-1, 1)
+        self._state_value_optimizer.step()
+
+
+
+        
+        self._policy_optimizer.zero_grad()
+        policy_loss = torch.stack(policy_loss, dim=0).sum()
+        policy_loss.backward()
         for param in self._policy_net.parameters():
             param.grad.data.clamp_(-1, 1)
+        self._policy_optimizer.step()
 
-        self._optimizer.step()
+        
 
         return policy_loss.tolist()
 

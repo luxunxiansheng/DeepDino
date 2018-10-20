@@ -6,9 +6,13 @@
 - [Acceleration](#acceleration)
 - [Who is the agent?](#who-is-the-agent)
 - [On States](#on-states)
-- [Reinforcement Learning algorithm used in this project](#reinforcement-learning-algorithm-used-in-this-project)
-        - [1. Value based](#1-value-based)
+- [Algorithms used in this project](#algorithms-used-in-this-project)
+        - [1.Value based](#1value-based)
+            - [1.1 DQN](#11-dqn)
+            - [1.2 Double DQN](#12-double-dqn)
         - [2. Policy gradient](#2-policy-gradient)
+            - [2.1 REINFORCE](#21-reinforce)
+            - [2.2 Actor-Critic](#22-actor-critic)
 
 
 # Overview
@@ -94,24 +98,45 @@ the paper "Human-level control through deep reinforcement learning" )
 # Algorithms used in this project 
 
 ###  1.Value based
-1.1 DQN  
-1.2 Double DQN
+
+####  1.1 DQN  ####
+####  1.2 Double DQN ####
 
 
-> Based on our experiments, it seems the Double DQN is not necessarily better than DQN. This maybe the expected observation in Dino game for there are only two values in action space and the over max is not that seriouis as in a large action space.
+Based on our experiments, it seems the Double DQN is not necessarily better than DQN. This maybe the expected observation in Dino game for there are only two values in action space and the over max is not that seriouis as in a large action space.
+
+
 ### 2. Policy gradient 
-2.1  REINFORCE  
->REINFORCE (Monte-Carlo policy gradient) relies on an estimated return by Monte-Carlo methods using episode samples to update the policy parameter θ. REINFORCE works because the expectation of the sample gradient is equal to the actual gradient, that is, the sample gradient is a unbiased estimation of the actual gradient:
+
+#### 2.1  REINFORCE  ####
+REINFORCE (Monte-Carlo policy gradient) relies on an estimated return by Monte-Carlo methods using episode samples to update the policy parameter θ. REINFORCE works because the expectation of the sample gradient is equal to the actual gradient, that is, the sample gradient is a unbiased estimation of the actual gradient:
 $$\nabla_\theta J(\theta)= \mathbb{E}_\pi[Q^\pi(s, a) \nabla_\theta \ln \pi_\theta(a \vert s)] = \mathbb{E}_\pi[G_t\nabla_\theta \ln \pi_\theta(a \vert s)]$$   
+
+It is common to subtract a baseline from the $G_t$ to reduce the variance. We try the baseline as the value of the state: $\hat{V(s)}$ ,estimated with a founction approximator,say, a netrual network in our case    
+
+The algorithm is listed as below:  
+
+
+>**REINFORCE with Baseline(episodic)**  
+> 
+>> Input: a  differentiable policy parameterization $\pi(a \vert s,\theta)$  
+   Input: a  differentiable state-value function parameterization $\hat{v}(s,w)$  
+   Algorithm parameters: step sizes $\alpha^\theta >0,\alpha^w >0$  
+   Initialize  policy parameter $\theta$ and stete-value weights $w$  
+   Loop forever (for each episode):
+>>>Generate an episode $S_0,A_0,R_1,S_1,A_1,R_2,...S_{T-1},A_{T-1},R_T$,following $\pi     (.\vert.,\theta)$  
+   Loop for each step of the episode t=0,1,.....T-1:
+>>>>$G\leftarrow\sum_{k=t+1}^T\gamma^{k-t-1}R_k$  
+    $\delta\leftarrow G-\hat{v}(S_t,w)$  
+    $w\leftarrow w+\alpha^w\gamma^t\delta\nabla\hat{v}(S_t,w)$  
+    $\theta\leftarrow\theta+\alpha^\theta\gamma^t\delta\nabla\ln\pi(A_t|S_t,\theta)$     
     
-> The algorithm is listed as below:  
-    >1. Init the policy parameters $\theta$ at random 
-    >2. Generate one trajectory on policy $\pi_\theta: S_1,A_1,R_1,S_2,A_2,....,S_T$
-    >3. For t= 1,2,....,T:  
-        1. Estimate the return $G_t$   
-        2. Update policy parameters: $\theta \leftarrow \theta + \alpha \gamma^t G_t \nabla_\theta \ln \pi_\theta(A_t \vert S_t)$ 
+  
+   
+    
 
 
+#### 2.2 Actor-Critic ####
 
 
    
