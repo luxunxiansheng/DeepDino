@@ -114,7 +114,9 @@ Based on our experiments, it seems the Double DQN is not necessarily better than
 REINFORCE (Monte-Carlo policy gradient) relies on an estimated return by Monte-Carlo methods using episode samples to update the policy parameter θ. REINFORCE works because the expectation of the sample gradient is equal to the actual gradient, that is, the sample gradient is a unbiased estimation of the actual gradient:
 $$\nabla_\theta J(\theta)= \mathbb{E}_\pi[Q^\pi(s, a) \nabla_\theta \ln \pi_\theta(a \vert s)] = \mathbb{E}_\pi[G_t\nabla_\theta \ln \pi_\theta(a \vert s)]$$   
 
-It is common to subtract a baseline from the $G_t$ to reduce the variance. We try the baseline as the value of the state: $\hat{V(s)}$ ,estimated with a founction approximator,say, a netrual network in our case    
+It is common to subtract a baseline from the $G_t$ to reduce the variance. We try the baseline as the value of the state: $\hat{V(s)}$ ,estimated with a founction approximator,say, a netrual network in our case.
+
+It is worth noting that the policy is evaluated with Monte Carlo method while the baseline is fit with a netural network. That being said, the advantage is still a unbiased, but high variance single-sample estimate.  In a nutshell, this is a typical policy gradient method. 
 
 The algorithm is listed as below:  
 
@@ -134,9 +136,6 @@ The algorithm is listed as below:
     $\theta\leftarrow\theta+\alpha^\theta\gamma^t\delta\nabla\ln\pi(A_t|S_t,\theta)$     
     
   
-   
-    
-
 
 #### 2.2 Actor-Critic ####
 

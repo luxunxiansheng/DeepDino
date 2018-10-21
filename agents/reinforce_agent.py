@@ -33,6 +33,8 @@
 #
 # /
 
+from operator import sub
+
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -65,7 +67,7 @@ class REINFORCEAgent(BaseAgent):
         action_index = m.sample()
         return log_probs[action_index.item()], action_index.item()
 
-
+    
     def _run_policy(self, game, t, init_state):
         episode_log_prob_actions = []
         episode_rewards = []
@@ -83,7 +85,7 @@ class REINFORCEAgent(BaseAgent):
 
             # run the selected action and observe next screenshot & reward
             next_screentshot, reward_t, terminal, score_t = self._game_step_forward(game, action_t)
-            episode_rewards.append(reward_t)
+            episode_rewards.append(reward_t.cuda())
 
             if terminal:
                 break
@@ -97,7 +99,7 @@ class REINFORCEAgent(BaseAgent):
     def _evaluate_policy_with_netrual_network(self,state):
         return self._state_value_net(state.cuda())
          
-  
+    
     def _evaluate_policy_with_Monte_Carlo(self,episode_rewards):
     
        eps= np.finfo(np.float32).eps.item()
@@ -131,15 +133,17 @@ class REINFORCEAgent(BaseAgent):
         self._state_value_optimizer.step()
         
         return state_value_loss.item()
-        
 
-    def _improve_policy(self, episode_log_prob_actions, G_t_tensor,epsode_state_values,epoch):
-          
+    def _evaluate_advantate(self, episode_returns, episode_state_values):
+        return list(map(sub,episode_returns,episode_state_values))
+        
+ 
+    def _improve_policy(self, episode_log_prob_actions,advantages,epsode_state_values,epoch):
         # improve the policy 
         policy_loss = []
-        for log_prob, g, state_value in zip(episode_log_prob_actions,G_t_tensor,epsode_state_values):
-            # subtract the state value from the G. 
-            policy_loss.append(-log_prob * (g - state_value.detach()))
+        for log_prob, advantage in zip(episode_log_prob_actions,advantages):
+            
+            policy_loss.append(-log_prob * advantage.detach())
 
         self._policy_optimizer.zero_grad()
         policy_loss = torch.stack(policy_loss, dim=0).sum()
@@ -147,9 +151,7 @@ class REINFORCEAgent(BaseAgent):
         for param in self._policy_net.parameters():
             param.grad.data.clamp_(-1, 1)
         self._policy_optimizer.step()   
-        
-
-        
+            
     
     def train(self, game):
         t = 0
@@ -180,11 +182,13 @@ class REINFORCEAgent(BaseAgent):
                 highest_score = final_score
                 is_best = True
 
-            returns= self._evaluate_policy_with_Monte_Carlo(episode_rewards)
+            episode_returns= self._evaluate_policy_with_Monte_Carlo(episode_rewards)
 
-            state_value_loss=self._fit_state_value_model(episode_state_values,returns)
+            state_value_loss=self._fit_state_value_model(episode_state_values,episode_returns)
             
-            self._improve_policy(episode_log_prob_actions,returns,episode_state_values,epoch)     
+            advantages=self._evaluate_advantate(episode_returns,episode_state_values)
+
+            self._improve_policy(episode_log_prob_actions,advantages,episode_state_values,epoch)     
             
             
             checkpoint = {
@@ -200,9 +204,3 @@ class REINFORCEAgent(BaseAgent):
             self._tensorboard_log(t, epoch, highest_score, final_score, state_value_loss, self._policy_net)
 
             epoch = epoch + 1
-
-            
-
-   
-
-    

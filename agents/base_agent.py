@@ -68,6 +68,9 @@ class BaseAgent(object):
             from agents.reinforce_agent import REINFORCEAgent
             return REINFORCEAgent(config)
 
+        if working_agent == 'ActorCriticAgent':
+            from agents.actor_critic import ActorCriticAgent
+            return ActorCriticAgent(config)
         return None
                 
 
