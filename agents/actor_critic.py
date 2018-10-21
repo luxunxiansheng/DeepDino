@@ -136,13 +136,11 @@ class ActorCriticAgent(BaseAgent):
         return state_value_loss.item()
 
     def _evaluate_advantate(self, episode_rewards, episode_state_values):
-
-            
+          
         v_s_esitmated= list(map(add,episode_rewards,episode_state_values[1:])) 
-        
         return list(map(sub,v_s_esitmated,episode_state_values))
         
- 
+
     def _improve_policy(self, episode_log_prob_actions,advantages,epsode_state_values,epoch):
         # improve the policy 
         policy_loss = []
