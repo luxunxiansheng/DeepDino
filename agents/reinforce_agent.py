@@ -160,7 +160,7 @@ class REINFORCEAgent(BaseAgent):
             policy_loss.append(-log_prob * (g - state_value.detach()))
             
             # a biased estimation of state value with the q value of a single trajectory 
-            state_value_loss.append(F.l2(state_value,g))
+            state_value_loss.append(F.smooth_l1_loss(state_value,g))
 
         
         self._state_value_optimizer.zero_grad()
