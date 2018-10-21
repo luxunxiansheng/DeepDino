@@ -160,11 +160,11 @@ class REINFORCEAgent(BaseAgent):
             policy_loss.append(-log_prob * (g - state_value.detach()))
             
             # a biased estimation of state value with the q value of a single trajectory 
-            state_value_loss.append(F.smooth_l1_loss(state_value,g))
+            state_value_loss.append(F.l2(state_value,g))
 
         
         self._state_value_optimizer.zero_grad()
-        state_value_loss = torch.stack(state_value_loss, dim=0).sum()
+        state_value_loss = torch.stack(state_value_loss, dim=0).mean()
         state_value_loss.backward()
         for param in self._state_value_net.parameters():
             param.grad.data.clamp_(-1, 1)
