@@ -1,6 +1,7 @@
 
 - [Overview](#overview)
 - [Programming Philosophy](#programming-philosophy)
+- [Architecture](#architecture)
 - [Visualization](#visualization)
 - [Visible or Invisible](#visible-or-invisible)
 - [Acceleration](#acceleration)
@@ -44,13 +45,14 @@ machine learning algorithms are being flollowed.
 
 But I dislike it. After reading many guys' codes, I just feel not good. 
 ML algortim is somehow complexy in itself, but if the code is not writen 
-caerfully, it is even a double nigthmare. To make life easier, in this 
-project, I hope the code is at least readable in the first palce , and
-the algorithm efficiency is secondary. So I decided to follow Object-
-Oriented-Design as much as possible for I believe OOD is mostly  consistent
-with the human intuition. In the last decades, numerous great softwares from 
-industry were designed and programmed with OO principle. If used properly,
-OO is a swiss knife without any doubt. 
+caerfully, it might be even a double nigthmare. To make life easier,I hope the code is at least readable in the first palce , and the algorithm efficiency could be traded off if have to. So I decided to follow Object-Oriented-Design as much as possible. From my experience,I believe OOD is mostly  consistent with the human intuition. In the last decades, we have seen that numerous great softwares of industry strength were designed and programmed with OO principle. If used properly,OO is a swiss knife without any doubt. 
+
+# Architecture 
+It is necessary to set up a general framework for reinforcement learning algorithms. Here is the basic workflow as illustrated in [the course of  Berkely CS294-112](http://rail.eecs.berkeley.edu/deeprlcourse/).  
+
+![RL algorithm framework diagram](images/framework.png). 
+
+We try to follow it as tightly as possible.
 
 
 # Visualization 
