@@ -59,7 +59,9 @@ class ActorCriticAgent(BaseAgent):
 
         self._state_value_network_name = config['ACTOR-CRITIC'].get('state_value_model_name')
         self._state_value_net = DeepMindNetworkBase.create(self._state_value_network_name, input_channels=self._image_stack_size, output_size=1).cuda()
-        self._state_value_optimizer = optim.Adam(self._state_value_net.parameters(), lr= 0.0002)
+        self._state_value_target_net= DeepMindNetworkBase.create(self._state_value_network_name, input_channels=self._image_stack_size, output_size=1).cuda()
+        
+        self._state_value_optimizer = optim.Adam(self._state_value_net.parameters(), lr=self._lr)
     
 
     def _get_action(self, state):
@@ -68,11 +70,14 @@ class ActorCriticAgent(BaseAgent):
         action_index = m.sample()
         return log_probs[action_index.item()], action_index.item()
 
-    
+    def _update_state_value_target_net(self):
+        self._state_value_target_net.load_state_dict(self._state_value_net.state_dict())
+
     def _run_policy(self, game, t, init_state):
         episode_log_prob_actions = []
         episode_rewards = []
-        episode_state_values=[]
+        episode_state_values = []
+        episode_target_state_values=[]
 
         current_state = init_state
         
@@ -80,6 +85,8 @@ class ActorCriticAgent(BaseAgent):
         while (True):
             state_value = self._evaluate_policy_with_netrual_network(current_state)
             episode_state_values.append(state_value)
+            target_state_value = self._evaluate_policy_with_target_netrual_network(current_state).detach()
+            episode_target_state_values.append(target_state_value)
 
             log_prob_action, action_t = self._get_action(current_state)
             episode_log_prob_actions.append(log_prob_action)
@@ -95,36 +102,20 @@ class ActorCriticAgent(BaseAgent):
                 current_state = self._get_next_state(current_state, next_screentshot)
                 t = t+1
 
-        return episode_log_prob_actions, episode_rewards, episode_state_values,score_t, t
+        return episode_log_prob_actions, episode_rewards, episode_state_values,episode_target_state_values,score_t, t
 
     def _evaluate_policy_with_netrual_network(self,state):
         return self._state_value_net(state.cuda())
          
-    
-    def _evaluate_policy_with_Monte_Carlo(self,episode_rewards):
-    
-       eps= np.finfo(np.float32).eps.item()
+    def _evaluate_policy_with_target_netrual_network(self, state):
+        return self._state_value_target_net(state.cuda())   
 
-       # the return at time t
-       G_t = 0
-       G_t_list = []
-       for r in episode_rewards[::-1]:
-           G_t = r + self._gamma * G_t
-           G_t_list.insert(0, G_t)
-       G_t_tensor = torch.tensor(G_t_list).cuda()
-
-        # normalize the return alone the trajectory
-       G_t_tensor = (G_t_tensor - G_t_tensor.mean()) / (G_t_tensor.std() + eps)
-        
-       return G_t_tensor
-
-    def _fit_state_value_model(self, epsode_state_value, G_t_tensor):
-        
+    def _fit_state_value_model(self, episode_target_state_values, episode_state_values,epsode_rewards):
         # fit the state value 
         state_value_loss = []
-        for state_value,g in zip(epsode_state_value,G_t_tensor):
-            # a  unbiased estimation of state value with single trajectory 
-            state_value_loss.append(F.smooth_l1_loss(state_value,g))
+        for reward, state_value,target_next_state_value in zip(epsode_rewards,episode_state_values,episode_target_state_values[1:]):
+            td_target=reward+ self._gamma*target_next_state_value 
+            state_value_loss.append(F.smooth_l1_loss(state_value,td_target))
         
         self._state_value_optimizer.zero_grad()
         state_value_loss = torch.stack(state_value_loss, dim=0).mean()
@@ -136,7 +127,6 @@ class ActorCriticAgent(BaseAgent):
         return state_value_loss.item()
 
     def _evaluate_advantate(self, episode_rewards, episode_state_values):
-          
         v_s_esitmated= list(map(add,episode_rewards,episode_state_values[1:])) 
         return list(map(sub,v_s_esitmated,episode_state_values))
         
@@ -145,7 +135,6 @@ class ActorCriticAgent(BaseAgent):
         # improve the policy 
         policy_loss = []
         for log_prob, advantage in zip(episode_log_prob_actions,advantages):
-            
             policy_loss.append(-log_prob * advantage.detach())
 
         self._policy_optimizer.zero_grad()
@@ -175,25 +164,29 @@ class ActorCriticAgent(BaseAgent):
         # the first state containes the first 4 frames
         initial_state = torch.stack((screenshot, screenshot, screenshot, screenshot))
 
+        self._state_value_target_net.load_state_dict(self._state_value_net.state_dict())
+        self._state_value_target_net.eval() 
+
         # run episodes again and again
         while (True):
             
-            episode_log_prob_actions, episode_rewards, episode_state_values,final_score, t = self._run_policy(game, t, initial_state)
+            # Sample a single trajectory 
+            episode_log_prob_actions, episode_rewards, episode_state_values,episode_target_state_values,final_score, t =self._run_policy(game, t, initial_state)
 
             is_best = False
             if final_score > highest_score:
                 highest_score = final_score
                 is_best = True
 
-            episode_returns= self._evaluate_policy_with_Monte_Carlo(episode_rewards)
-
-            state_value_loss=self._fit_state_value_model(episode_state_values,episode_returns)
+            # Fit the state value with TD(0) target
+            state_value_loss=self._fit_state_value_model(episode_target_state_values,episode_state_values,episode_rewards)
             
             advantages=self._evaluate_advantate(episode_rewards,episode_state_values)
-
-            if epoch % 10 == 0:             
-                self._improve_policy(episode_log_prob_actions,advantages,episode_state_values)     
-                        
+           
+            if epoch % 20 == 0:
+                self._improve_policy(episode_log_prob_actions, advantages, episode_state_values)
+                self._update_state_value_target_net()
+                                    
             checkpoint = {
                 'time_step': t,
                 'epoch': epoch,
