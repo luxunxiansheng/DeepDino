@@ -138,7 +138,7 @@ class REINFORCEAgent(BaseAgent):
         return list(map(sub,episode_returns,episode_state_values))
         
  
-    def _improve_policy(self, episode_log_prob_actions,advantages,epsode_state_values,epoch):
+    def _improve_policy(self, episode_log_prob_actions,advantages,epsode_state_values):
         # improve the policy 
         policy_loss = []
         for log_prob, advantage in zip(episode_log_prob_actions,advantages):
@@ -174,7 +174,8 @@ class REINFORCEAgent(BaseAgent):
 
         # run episodes again and again
         while (True):
-            
+
+            # Sample a single trajectory 
             episode_log_prob_actions, episode_rewards, episode_state_values,final_score, t = self._run_policy(game, t, initial_state)
 
             is_best = False
@@ -182,13 +183,17 @@ class REINFORCEAgent(BaseAgent):
                 highest_score = final_score
                 is_best = True
 
+            # Estimate the MC return 
             episode_returns= self._evaluate_policy_with_Monte_Carlo(episode_rewards)
 
+            # Fit the state value model with the MC target 
             state_value_loss=self._fit_state_value_model(episode_state_values,episode_returns)
             
+            # Estimate the advantage. The state value is used as the baseline
             advantages=self._evaluate_advantate(episode_returns,episode_state_values)
 
-            self._improve_policy(episode_log_prob_actions,advantages,episode_state_values,epoch)     
+            #  Update the policy  
+            self._improve_policy(episode_log_prob_actions,advantages,episode_state_values)     
             
             
             checkpoint = {

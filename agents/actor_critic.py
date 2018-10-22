@@ -59,7 +59,7 @@ class ActorCriticAgent(BaseAgent):
 
         self._state_value_network_name = config['ACTOR-CRITIC'].get('state_value_model_name')
         self._state_value_net = DeepMindNetworkBase.create(self._state_value_network_name, input_channels=self._image_stack_size, output_size=1).cuda()
-        self._state_value_optimizer = optim.Adam(self._state_value_net.parameters(), lr=self._lr)
+        self._state_value_optimizer = optim.Adam(self._state_value_net.parameters(), lr= 0.0002)
     
 
     def _get_action(self, state):
@@ -141,7 +141,7 @@ class ActorCriticAgent(BaseAgent):
         return list(map(sub,v_s_esitmated,episode_state_values))
         
 
-    def _improve_policy(self, episode_log_prob_actions,advantages,epsode_state_values,epoch):
+    def _improve_policy(self, episode_log_prob_actions,advantages,epsode_state_values):
         # improve the policy 
         policy_loss = []
         for log_prob, advantage in zip(episode_log_prob_actions,advantages):
@@ -191,7 +191,8 @@ class ActorCriticAgent(BaseAgent):
             
             advantages=self._evaluate_advantate(episode_rewards,episode_state_values)
 
-            self._improve_policy(episode_log_prob_actions,advantages,episode_state_values,epoch)     
+            if epoch % 10 == 0:             
+                self._improve_policy(episode_log_prob_actions,advantages,episode_state_values)     
                         
             checkpoint = {
                 'time_step': t,
