@@ -59,8 +59,7 @@ class ActorCriticAgent(BaseAgent):
 
         self._state_value_network_name = config['ACTOR-CRITIC'].get('state_value_model_name')
         self._state_value_net = DeepMindNetworkBase.create(self._state_value_network_name, input_channels=self._image_stack_size, output_size=1).cuda()
-        self._state_value_target_net= DeepMindNetworkBase.create(self._state_value_network_name, input_channels=self._image_stack_size, output_size=1).cuda()
-        
+                
         self._state_value_optimizer = optim.Adam(self._state_value_net.parameters(), lr=self._lr)
     
 
@@ -69,24 +68,20 @@ class ActorCriticAgent(BaseAgent):
         m = Categorical(probs)
         action_index = m.sample()
         return log_probs[action_index.item()], action_index.item()
-
-    def _update_state_value_target_net(self):
-        self._state_value_target_net.load_state_dict(self._state_value_net.state_dict())
-
+    
     def _run_policy(self, game, t, init_state):
         episode_log_prob_actions = []
         episode_rewards = []
         episode_state_values = []
-        episode_target_state_values=[]
-
+        
         current_state = init_state
         
         # run one episode until done
         while (True):
             state_value = self._evaluate_policy_with_netrual_network(current_state)
             episode_state_values.append(state_value)
-            target_state_value = self._evaluate_policy_with_target_netrual_network(current_state).detach()
-            episode_target_state_values.append(target_state_value)
+        
+        
 
             log_prob_action, action_t = self._get_action(current_state)
             episode_log_prob_actions.append(log_prob_action)
@@ -102,21 +97,20 @@ class ActorCriticAgent(BaseAgent):
                 current_state = self._get_next_state(current_state, next_screentshot)
                 t = t+1
 
-        return episode_log_prob_actions, episode_rewards, episode_state_values,episode_target_state_values,score_t, t
+        return episode_log_prob_actions, episode_rewards, episode_state_values,score_t, t
 
     def _evaluate_policy_with_netrual_network(self,state):
         return self._state_value_net(state.cuda())
          
-    def _evaluate_policy_with_target_netrual_network(self, state):
-        return self._state_value_target_net(state.cuda())   
-
-    def _fit_state_value_model(self, episode_target_state_values, episode_state_values,epsode_rewards):
+   
+    def _fit_state_value_model(self, episode_state_values,epsode_rewards):
         # fit the state value 
         state_value_loss = []
-        for reward, state_value,target_next_state_value in zip(epsode_rewards,episode_state_values,episode_target_state_values[1:]):
-            td_target=reward+ self._gamma*target_next_state_value 
-            state_value_loss.append(F.smooth_l1_loss(state_value,td_target))
         
+        for reward, state_value,target_next_state_value in zip(epsode_rewards,episode_state_values[:-2],episode_state_values[1:-1]):
+            td_target=reward+ self._gamma*target_next_state_value 
+            state_value_loss.append(F.smooth_l1_loss(state_value,td_target.detach()))
+              
         self._state_value_optimizer.zero_grad()
         state_value_loss = torch.stack(state_value_loss, dim=0).mean()
         state_value_loss.backward()
@@ -164,14 +158,12 @@ class ActorCriticAgent(BaseAgent):
         # the first state containes the first 4 frames
         initial_state = torch.stack((screenshot, screenshot, screenshot, screenshot))
 
-        self._state_value_target_net.load_state_dict(self._state_value_net.state_dict())
-        self._state_value_target_net.eval() 
-
+        
         # run episodes again and again
         while (True):
             
             # Sample a single trajectory 
-            episode_log_prob_actions, episode_rewards, episode_state_values,episode_target_state_values,final_score, t =self._run_policy(game, t, initial_state)
+            episode_log_prob_actions, episode_rewards, episode_state_values,final_score, t =self._run_policy(game, t, initial_state)
 
             is_best = False
             if final_score > highest_score:
@@ -179,14 +171,12 @@ class ActorCriticAgent(BaseAgent):
                 is_best = True
 
             # Fit the state value with TD(0) target
-            state_value_loss=self._fit_state_value_model(episode_target_state_values,episode_state_values,episode_rewards)
+            state_value_loss=self._fit_state_value_model(episode_state_values,episode_rewards)
             
             advantages=self._evaluate_advantate(episode_rewards,episode_state_values)
-           
-            if epoch % 20 == 0:
-                self._improve_policy(episode_log_prob_actions, advantages, episode_state_values)
-                self._update_state_value_target_net()
-                                    
+            
+            self._improve_policy(episode_log_prob_actions, advantages, episode_state_values)
+                                                            
             checkpoint = {
                 'time_step': t,
                 'epoch': epoch,
