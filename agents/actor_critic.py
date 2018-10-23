@@ -69,6 +69,27 @@ class ActorCriticAgent(BaseAgent):
         action_index = m.sample()
         return log_probs[action_index.item()], action_index.item()
     
+    
+    def _predict_state_value_with_netrual_network(self,state):
+        return self._state_value_net(state.cuda())
+
+    def _evaluate_policy_with_td(self,episode_rewards):
+        
+        eps= np.finfo(np.float32).eps.item()
+
+        # the return at time t
+        G_t = 0
+        G_t_list = []
+        for r in episode_rewards[::-1]:
+            G_t = r + self._gamma * G_t
+            G_t_list.insert(0, G_t)
+        G_t_tensor = torch.tensor(G_t_list).cuda()
+
+        # normalize the return alone the trajectory
+        G_t_tensor = (G_t_tensor - G_t_tensor.mean()) / (G_t_tensor.std() + eps)
+        
+        return G_t_tensor
+    
     def _run_policy(self, game, t, init_state):
         episode_log_prob_actions = []
         episode_rewards = []
@@ -78,10 +99,9 @@ class ActorCriticAgent(BaseAgent):
         
         # run one episode until done
         while (True):
-            state_value = self._evaluate_policy_with_netrual_network(current_state)
+            state_value = self._predict_state_value_with_netrual_network(current_state)
             episode_state_values.append(state_value)
-        
-        
+               
 
             log_prob_action, action_t = self._get_action(current_state)
             episode_log_prob_actions.append(log_prob_action)
@@ -99,10 +119,7 @@ class ActorCriticAgent(BaseAgent):
 
         return episode_log_prob_actions, episode_rewards, episode_state_values,score_t, t
 
-    def _evaluate_policy_with_netrual_network(self,state):
-        return self._state_value_net(state.cuda())
-         
-   
+     
     def _fit_state_value_model(self, episode_state_values,epsode_rewards):
         # fit the state value 
         state_value_loss = []
