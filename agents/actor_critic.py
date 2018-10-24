@@ -90,34 +90,34 @@ class ActorCriticAgent(BaseAgent):
         
         return G_t_tensor
     
-    def _run_policy(self, game, t, init_state):
-        episode_log_prob_actions = []
-        episode_rewards = []
-        episode_state_values = []
-        
-        current_state = init_state
-        
-        # run one episode until done
-        while (True):
+    def _run_steps(self, game, t,current_state,n_step):
+        log_prob_actions = []
+        rewards = []
+        state_values = []
+                       
+        for _ in range(n_step):
             state_value = self._predict_state_value_with_netrual_network(current_state)
-            episode_state_values.append(state_value)
-               
-
+            state_values.append(state_value)
+             
             log_prob_action, action_t = self._get_action(current_state)
-            episode_log_prob_actions.append(log_prob_action)
+            log_prob_actions.append(log_prob_action)
 
             # run the selected action and observe next screenshot & reward
             next_screentshot, reward_t, terminal, score_t = self._game_step_forward(game, action_t)
-            episode_rewards.append(reward_t.cuda())
+            rewards.append(reward_t.cuda())
 
             if terminal:
+                current_state = None
                 break
             else:
                 # assemble the next state  which contains the lastest 3 screenshot  and the next screenshot
                 current_state = self._get_next_state(current_state, next_screentshot)
                 t = t+1
-
-        return episode_log_prob_actions, episode_rewards, episode_state_values,score_t, t
+        
+        return current_state,score_t,log_prob_actions,rewards,state_values
+        
+       
+        
 
      
     def _fit_state_value_model(self, episode_state_values,epsode_rewards):
@@ -161,6 +161,7 @@ class ActorCriticAgent(BaseAgent):
         epoch = 0
         highest_score = 0
         state_dict = None
+        
 
         # resume from the checkpoint
         checkpoint = self._get_checkpoint()
@@ -175,25 +176,35 @@ class ActorCriticAgent(BaseAgent):
         # the first state containes the first 4 frames
         initial_state = torch.stack((screenshot, screenshot, screenshot, screenshot))
 
-        
         # run episodes again and again
         while (True):
+            # Run One Episode
+            is_best=False
+            fisrt_step_state = initial_state
+            while(True):
+                # run steps following the pi alone the trajectory    
+                last_step_state,last_step_score,log_prob_actions,rewards, state_values = self._run_steps(game, t, fisrt_step_state, 5)
+                if last_step_state != None:
+                    for log_prob_action, reward, state_value in zip(log_prob_actions.reverse(), rewards.reverse(), state_values.reverse()):
+                        td_target=
+                        
+                    
+                    
+                    # Fit the state value with TD(0) target
+                    state_value_loss=self._fit_state_value_model(episode_state_values,episode_rewards)
             
-            # Sample a single trajectory 
-            episode_log_prob_actions, episode_rewards, episode_state_values,final_score, t =self._run_policy(game, t, initial_state)
-
-            is_best = False
-            if final_score > highest_score:
-                highest_score = final_score
-                is_best = True
-
-            # Fit the state value with TD(0) target
-            state_value_loss=self._fit_state_value_model(episode_state_values,episode_rewards)
+                    advantages=self._evaluate_advantate(episode_rewards,episode_state_values)
             
-            advantages=self._evaluate_advantate(episode_rewards,episode_state_values)
-            
-            self._improve_policy(episode_log_prob_actions, advantages, episode_state_values)
-                                                            
+                    self._improve_policy(episode_log_prob_actions, advantages, episode_state_values)
+                    fisrt_step_state = last_step_state
+                # terminated   
+                else: 
+                    if last_step_score > highest_score:
+                        highest_score = last_step_score
+                        is_best=True
+                    break
+           
+                                                    
             checkpoint = {
                 'time_step': t,
                 'epoch': epoch,

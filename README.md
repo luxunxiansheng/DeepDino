@@ -48,9 +48,9 @@ ML algortim is somehow complexy in itself, but if the code is not writen
 caerfully, it might be even a double nigthmare. To make life easier,I hope the code is at least readable in the first palce , and the algorithm efficiency could be traded off if have to. So I decided to follow Object-Oriented-Design as much as possible. From my experience,I believe OOD is mostly  consistent with the human intuition. In the last decades, we have seen that numerous great softwares of industry strength were designed and programmed with OO principle. If used properly,OO is a swiss knife without any doubt. 
 
 # Architecture 
-It is necessary to set up a general framework for reinforcement learning algorithms. Here is the basic workflow as illustrated in [the course of  Berkely CS294-112](http://rail.eecs.berkeley.edu/deeprlcourse/).  
+Here is the basic workflow as illustrated in [the course of  Berkely CS294-112](http://rail.eecs.berkeley.edu/deeprlcourse/).  
 
-![RL algorithm framework diagram](images/framework.png). 
+![RL algorithm framework diagram](./assets/framework.png). 
 
 We try to follow it as tightly as possible.
 
@@ -109,6 +109,18 @@ Based on our experiments, it seems the Double DQN is not necessarily better than
 
 
 ### 2. Policy gradient 
+The goal of reinforcement learning is to find an optimal behavior strategy for the agent to obtain optimal rewards. The policy gradient method target at modeling and optimizing the policy directly. The policy is usually modeled with a parameterized funciton respect to $\theta,\pi_\theta(a|s)$. The value of the reward (objective) function depends on this policy and then various algorithms can be applied to optimize $\theta$  for the best reward.
+
+The basic objective function is defined as:
+
+$J(\theta)=\sum_{s \in S } d^\pi(s) V^\pi(s) = \sum_{s \in \mathcal{S}} d^\pi(s) \sum_{a \in \mathcal{A}} \pi_\theta(a \vert s) Q^\pi(s, a)$
+
+
+The general form of policy gradient with baseline is summarized as :
+
+![A general form of policy gradient mehtods](./assets/general_form_policy_gradient.png)
+
+See paper [Schulman et al. 2016](https://arxiv.org/abs/1506.02438) for more detials
 
 #### 2.1  REINFORCE  ####
 REINFORCE (Monte-Carlo policy gradient) relies on an estimated return by Monte-Carlo methods using episode samples to update the policy parameter θ. REINFORCE works because the expectation of the sample gradient is equal to the actual gradient, that is, the sample gradient is a unbiased estimation of the actual gradient:
@@ -116,12 +128,11 @@ $$\nabla_\theta J(\theta)= \mathbb{E}_\pi[Q^\pi(s, a) \nabla_\theta \ln \pi_\the
 
 It is common to subtract a baseline from the $G_t$ to reduce the variance. We try the baseline as the value of the state: $\hat{V(s)}$ ,estimated with a founction approximator,say, a netrual network in our case.
 
-It is worth noting that the policy is evaluated with Monte Carlo method while the baseline is fit with a netural network. That being said, the advantage is still a unbiased, but high variance single-sample estimate.  In a nutshell, this is a typical policy gradient method. 
+It is worth noting that the policy is evaluated with Monte Carlo method while the baseline is fit with a netural network. That being said, the advantage is unbiased, but high variance.In a nutshell, this is still a typical policy gradient method. 
 
 The algorithm is listed as below:  
 
-
->**REINFORCE with Baseline(episodic)**  
+**REINFORCE with Baseline(episodic)**  
 > 
 >> Input: a  differentiable policy parameterization $\pi(a \vert s,\theta)$  
    Input: a  differentiable state-value function parameterization $\hat{v}(s,w)$  
@@ -135,9 +146,33 @@ The algorithm is listed as below:
     $w\leftarrow w+\alpha^w\gamma^t\delta\nabla\hat{v}(S_t,w)$  
     $\theta\leftarrow\theta+\alpha^\theta\gamma^t\delta\nabla\ln\pi(A_t|S_t,\theta)$     
     
-  
+
 
 #### 2.2 Actor-Critic ####
+Two main components in policy gradient are the policy model and the value function. although the REINFORCE with baseline method learns both a policy and a state-value function, in Sutton's oppnion, [13.5 section of the book "Reinforcement Learning: An introduction"](http://incompleteideas.net/book/the-book-2nd.html), this is not considered to be an actor-critic method because he thinks its state-value function is used only as a baseline ,not as a critic. That is, it is not used for bootstrapping , but only as a baseline for a state whose estimate is being updated. 
+
+There are many variants of actor-critic method. We implmenent A3C in our case and here is the  outline:
+
+**Asynchronous Advantage Actor-Critic**  
+
+ 
+1. We have global parameters, $\theta$ and w; similar thread-specific parameters,$\theta^\prime = \theta$ and $w^\prime =w$
+2. Initialize the time step $t$  =1  
+3. while $T<=T_{MAX}$:
+   1. Reset gradient: $d\theta =0$ and $dw =0$  
+   2. Synchronize thread-specific parameters with global ones: θ’ = θ and w’ = w.  
+   3. $t_{start}$ = t and sample a starting state $s_t$.  
+   4. While $s_t$!= TERMINAL and $t-t_{start} <=  t_{max}$  
+      1. Pick the action $A_t\sim\pi_{\theta'}(A_t | S_t)$ and receive a new reward $R_t$ and a new state $S_{t+1}$  
+      2. Update t=t+1 and T=T+1  
+   5. Initialize the variable that holds the return estimation  
+      $R$ =0  if $S_t$ is TERMINAL or $R$ = $V_{w^\prime}(S_t)$  
+   6. For $i$ = t-1, ... $t_{start}$:  
+      1. $R\leftarrow\gamma R+R_i$;  here R is a MC measure of $G_i$  
+      2. accumulate gradients w.r.t. $\theta^{\prime}$: $d\theta \leftarrow d\theta+\nabla_{\theta'}\log\pi_{\theta'}(a_i|s_i)(R-V_{w'}(s_i))$  
+       accumulate gradient w.r.t. w': $dw \leftarrow dw + 2 (R - V_{w’}(s_i)) \nabla_{w’} (R - V_{w’}(s_i))$  
+   7. Update Synchronously $\theta$ using $d\theta$, and w using $dw$       
+
 
 
    
