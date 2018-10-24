@@ -65,42 +65,27 @@ class ActorCriticAgent(BaseAgent):
 
     def _get_action(self, state):
         probs, log_probs = self._policy_net(state.cuda())
-        m = Categorical(probs)
-        action_index = m.sample()
-        return log_probs[action_index.item()], action_index.item()
+        distribution = Categorical(probs)
+        action_index = distribution.sample()
+        return log_probs[action_index.item()], action_index.item(),distribution.entropy()
     
     
     def _predict_state_value_with_netrual_network(self,state):
         return self._state_value_net(state.cuda())
 
-    def _evaluate_policy_with_td(self,episode_rewards):
-        
-        eps= np.finfo(np.float32).eps.item()
-
-        # the return at time t
-        G_t = 0
-        G_t_list = []
-        for r in episode_rewards[::-1]:
-            G_t = r + self._gamma * G_t
-            G_t_list.insert(0, G_t)
-        G_t_tensor = torch.tensor(G_t_list).cuda()
-
-        # normalize the return alone the trajectory
-        G_t_tensor = (G_t_tensor - G_t_tensor.mean()) / (G_t_tensor.std() + eps)
-        
-        return G_t_tensor
-    
     def _run_steps(self, game, t,current_state,n_step):
         log_prob_actions = []
         rewards = []
-        state_values = []
+        states = []
+        entropys=[]
                        
         for _ in range(n_step):
-            state_value = self._predict_state_value_with_netrual_network(current_state)
-            state_values.append(state_value)
-             
-            log_prob_action, action_t = self._get_action(current_state)
+
+            states.append(current_state) 
+         
+            log_prob_action, action_t, entropy = self._get_action(current_state)
             log_prob_actions.append(log_prob_action)
+            entropys.append(entropy)
 
             # run the selected action and observe next screenshot & reward
             next_screentshot, reward_t, terminal, score_t = self._game_step_forward(game, action_t)
@@ -113,21 +98,10 @@ class ActorCriticAgent(BaseAgent):
                 # assemble the next state  which contains the lastest 3 screenshot  and the next screenshot
                 current_state = self._get_next_state(current_state, next_screentshot)
                 t = t+1
+        return current_state,score_t,log_prob_actions,entropys,rewards,states
         
-        return current_state,score_t,log_prob_actions,rewards,state_values
-        
-       
-        
-
-     
-    def _fit_state_value_model(self, episode_state_values,epsode_rewards):
-        # fit the state value 
-        state_value_loss = []
-        
-        for reward, state_value,target_next_state_value in zip(epsode_rewards,episode_state_values[:-2],episode_state_values[1:-1]):
-            td_target=reward+ self._gamma*target_next_state_value 
-            state_value_loss.append(F.smooth_l1_loss(state_value,td_target.detach()))
-              
+         
+    def _fit_state_value_model(self, state_value_loss):
         self._state_value_optimizer.zero_grad()
         state_value_loss = torch.stack(state_value_loss, dim=0).mean()
         state_value_loss.backward()
@@ -136,25 +110,16 @@ class ActorCriticAgent(BaseAgent):
         self._state_value_optimizer.step()
         
         return state_value_loss.item()
+           
 
-    def _evaluate_advantate(self, episode_rewards, episode_state_values):
-        v_s_esitmated= list(map(add,episode_rewards,episode_state_values[1:])) 
-        return list(map(sub,v_s_esitmated,episode_state_values))
-        
-
-    def _improve_policy(self, episode_log_prob_actions,advantages,epsode_state_values):
-        # improve the policy 
-        policy_loss = []
-        for log_prob, advantage in zip(episode_log_prob_actions,advantages):
-            policy_loss.append(-log_prob * advantage.detach())
-
+    def _improve_policy(self,policy_loss):
         self._policy_optimizer.zero_grad()
         policy_loss = torch.stack(policy_loss, dim=0).sum()
         policy_loss.backward()
         for param in self._policy_net.parameters():
             param.grad.data.clamp_(-1, 1)
         self._policy_optimizer.step()   
-            
+         
     
     def train(self, game):
         t = 0
@@ -162,7 +127,6 @@ class ActorCriticAgent(BaseAgent):
         highest_score = 0
         state_dict = None
         
-
         # resume from the checkpoint
         checkpoint = self._get_checkpoint()
         if self._config['GLOBAL'].getboolean('resume') and checkpoint is not None:
@@ -183,28 +147,37 @@ class ActorCriticAgent(BaseAgent):
             fisrt_step_state = initial_state
             while(True):
                 # run steps following the pi alone the trajectory    
-                last_step_state,last_step_score,log_prob_actions,rewards, state_values = self._run_steps(game, t, fisrt_step_state, 5)
-                if last_step_state != None:
-                    for log_prob_action, reward, state_value in zip(log_prob_actions.reverse(), rewards.reverse(), state_values.reverse()):
-                        td_target=
-                        
-                    
-                    
-                    # Fit the state value with TD(0) target
-                    state_value_loss=self._fit_state_value_model(episode_state_values,episode_rewards)
-            
-                    advantages=self._evaluate_advantate(episode_rewards,episode_state_values)
-            
-                    self._improve_policy(episode_log_prob_actions, advantages, episode_state_values)
-                    fisrt_step_state = last_step_state
-                # terminated   
-                else: 
+                last_step_state,last_step_score,log_prob_actions,entropys,rewards,states = self._run_steps(game, t, fisrt_step_state, 5)
+               
+                returns= 0 if last_step_state is None else self._predict_state_value_with_netrual_network(last_step_state)
+
+                policy_loss = []
+                state_value_loss = []
+                                
+                for log_prob_action,reward,entropy,state in zip(log_prob_actions.reverse(), rewards.reverse(),entropys.reverse(),states.reverse()):
+                    returns = reward+ self._gamma * returns 
+                    state_value= self._predict_state_value_with_netrual_network(state)
+                  
+                    state_value_loss.append(F.smooth_l1_loss(state_value,returns.detach()))
+
+                    advantage= returns-state_value
+                    policy_loss.append(-log_prob_action * advantage.detach())
+           
+                
+                self._fit_state_value_model(state_value_loss)
+                self._improve_policy(policy_loss)
+
+
+                if last_step_state is None:
+                    is_best = False
                     if last_step_score > highest_score:
                         highest_score = last_step_score
-                        is_best=True
+                        is_best = True
+                
                     break
-           
-                                                    
+                else:
+                    fisrt_step_state = last_step_state
+
             checkpoint = {
                 'time_step': t,
                 'epoch': epoch,
@@ -215,6 +188,6 @@ class ActorCriticAgent(BaseAgent):
             print("t:", t, "epoch:", epoch, "loss:", state_value_loss)
             Utilis.save_checkpoint(checkpoint, is_best, self._my_name)
 
-            self._tensorboard_log(t, epoch, highest_score, final_score, state_value_loss, self._policy_net)
+            self._tensorboard_log(t, epoch, highest_score, last_step_score, state_value_loss, self._policy_net)
 
             epoch = epoch + 1
