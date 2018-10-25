@@ -98,23 +98,22 @@ class ActorCriticAgent(BaseAgent):
                 # assemble the next state  which contains the lastest 3 screenshot  and the next screenshot
                 current_state = self._get_next_state(current_state, next_screentshot)
                 t = t+1
-        return current_state,score_t,log_prob_actions,entropys,rewards,states
+        return current_state,score_t,log_prob_actions,entropys,rewards,states,t
         
          
-    def _fit_state_value_model(self, state_value_loss):
+    def _fit_state_value_model(self, state_value_losses):
         self._state_value_optimizer.zero_grad()
-        state_value_loss = torch.stack(state_value_loss, dim=0).mean()
+        state_value_loss = torch.stack(state_value_losses, dim=0).mean()
         state_value_loss.backward()
         for param in self._state_value_net.parameters():
             param.grad.data.clamp_(-1, 1)
         self._state_value_optimizer.step()
-        
-        return state_value_loss.item()
-           
 
-    def _improve_policy(self,policy_loss):
+        return state_value_loss.item()
+
+    def _improve_policy(self,policy_losses):
         self._policy_optimizer.zero_grad()
-        policy_loss = torch.stack(policy_loss, dim=0).sum()
+        policy_loss = torch.stack(policy_losses, dim=0).sum()
         policy_loss.backward()
         for param in self._policy_net.parameters():
             param.grad.data.clamp_(-1, 1)
@@ -145,31 +144,31 @@ class ActorCriticAgent(BaseAgent):
             # Run One Episode
             is_best=False
             fisrt_step_state = initial_state
+            episode_final_score = 0
+            episode_value_loss=0
             while(True):
                 # run steps following the pi alone the trajectory    
-                last_step_state,last_step_score,log_prob_actions,entropys,rewards,states = self._run_steps(game, t, fisrt_step_state, 5)
+                last_step_state,last_step_score,log_prob_actions,entropys,rewards,states,t = self._run_steps(game, t, fisrt_step_state, 5)
                
                 returns= 0 if last_step_state is None else self._predict_state_value_with_netrual_network(last_step_state)
 
-                policy_loss = []
-                state_value_loss = []
-                                
-                for log_prob_action,reward,entropy,state in zip(log_prob_actions.reverse(), rewards.reverse(),entropys.reverse(),states.reverse()):
+                policy_losses = []
+                state_value_losses = []
+                                                
+                for log_prob_action,reward,entropy,state in zip(log_prob_actions[::-1], rewards[::-1],entropys[::-1],states[::-1]):
                     returns = reward+ self._gamma * returns 
                     state_value= self._predict_state_value_with_netrual_network(state)
-                  
-                    state_value_loss.append(F.smooth_l1_loss(state_value,returns.detach()))
+                    state_value_losses.append(F.smooth_l1_loss(state_value,returns.detach()))
 
                     advantage= returns-state_value
-                    policy_loss.append(-log_prob_action * advantage.detach())
-           
+                    policy_losses.append(-log_prob_action * advantage.detach()+entropy)
+                 
                 
-                self._fit_state_value_model(state_value_loss)
-                self._improve_policy(policy_loss)
-
+                episode_value_loss=self._fit_state_value_model(state_value_losses)
+                self._improve_policy(policy_losses)
 
                 if last_step_state is None:
-                    is_best = False
+                    episode_final_score=last_step_score
                     if last_step_score > highest_score:
                         highest_score = last_step_score
                         is_best = True
@@ -185,9 +184,9 @@ class ActorCriticAgent(BaseAgent):
                 'state_dict': self._policy_net.state_dict()
             }
 
-            print("t:", t, "epoch:", epoch, "loss:", state_value_loss)
+            print("t:", t, "epoch:", epoch, "loss:", episode_value_loss)
             Utilis.save_checkpoint(checkpoint, is_best, self._my_name)
 
-            self._tensorboard_log(t, epoch, highest_score, last_step_score, state_value_loss, self._policy_net)
+            self._tensorboard_log(t, epoch, highest_score, episode_final_score, episode_value_loss, self._policy_net)
 
             epoch = epoch + 1
