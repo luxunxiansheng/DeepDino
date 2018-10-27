@@ -52,6 +52,7 @@ class ActorCriticAgent(BaseAgent):
         super(ActorCriticAgent, self).__init__(config)
         
         self._lr = config['ACTOR-CRITIC'].getfloat('learning_rate')
+        self._entropy_beta= config['ACTOR-CRITIC'].getfloat('entropy_beta')
 
         self._policy_network_name = config['ACTOR-CRITIC'].get('policy_model_name')
         self._policy_net = DeepMindNetworkBase.create(self._policy_network_name, input_channels=self._image_stack_size, output_size=self._action_space).cuda()
@@ -98,6 +99,8 @@ class ActorCriticAgent(BaseAgent):
                 # assemble the next state  which contains the lastest 3 screenshot  and the next screenshot
                 current_state = self._get_next_state(current_state, next_screentshot)
                 t = t+1
+        
+        
         return current_state,score_t,log_prob_actions,entropys,rewards,states,t
         
          
@@ -111,10 +114,14 @@ class ActorCriticAgent(BaseAgent):
 
         return state_value_loss.item()
 
-    def _improve_policy(self,policy_losses):
+    def _improve_policy(self,policy_losses,entropy_losses):
         self._policy_optimizer.zero_grad()
-        policy_loss = torch.stack(policy_losses, dim=0).sum()
-        policy_loss.backward()
+
+        policy_loss = torch.stack(policy_losses, dim=0).mean()
+        entropy_loss = torch.stack(entropy_losses, dim = 0).mean()
+        
+        total_loss=policy_loss-self._entropy_beta*entropy_loss
+        total_loss.backward()
         for param in self._policy_net.parameters():
             param.grad.data.clamp_(-1, 1)
         self._policy_optimizer.step()   
@@ -154,6 +161,7 @@ class ActorCriticAgent(BaseAgent):
 
                 policy_losses = []
                 state_value_losses = []
+                entropy_losses=[]
                                                 
                 for log_prob_action,reward,entropy,state in zip(log_prob_actions[::-1], rewards[::-1],entropys[::-1],states[::-1]):
                     returns = reward+ self._gamma * returns 
@@ -161,11 +169,13 @@ class ActorCriticAgent(BaseAgent):
                     state_value_losses.append(F.smooth_l1_loss(state_value,returns.detach()))
 
                     advantage= returns-state_value
-                    policy_losses.append(-log_prob_action * advantage.detach()+entropy)
+                    policy_losses.append(-log_prob_action * advantage.detach())
+
+                    entropy_losses.append(entropy)
                  
                 
                 episode_value_loss=self._fit_state_value_model(state_value_losses)
-                self._improve_policy(policy_losses)
+                self._improve_policy(policy_losses,entropy_losses)
 
                 if last_step_state is None:
                     episode_final_score=last_step_score
