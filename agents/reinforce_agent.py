@@ -51,6 +51,7 @@ class REINFORCEAgent(BaseAgent):
         super(REINFORCEAgent, self).__init__(config)
 
         self._lr = config['REINFOCE'].getfloat('learning_rate')
+        self._entropy_beta= config['REINFOCE'].getfloat('entropy_beta')
 
         self._policy_network_name = config['REINFOCE'].get('policy_model_name')
         self._policy_net = DeepMindNetworkBase.create(self._policy_network_name, input_channels=self._image_stack_size, output_size=self._action_space).cuda()
@@ -59,19 +60,22 @@ class REINFORCEAgent(BaseAgent):
         self._state_value_network_name = config['REINFOCE'].get('state_value_model_name')
         self._state_value_net = DeepMindNetworkBase.create(self._state_value_network_name, input_channels=self._image_stack_size, output_size=1).cuda()
         self._state_value_optimizer = optim.Adam(self._state_value_net.parameters(), lr=self._lr)
-    
 
-    def _get_action(self, state):
-        probs, log_probs = self._policy_net(state.cuda())
-        m = Categorical(probs)
-        action_index = m.sample()
-        return log_probs[action_index.item()], action_index.item()
 
-    def _predict_state_value_with_netrual_network(self,state):
+    def _predict_action_probability_with_policy_netural_network(self, state):
+        return self._policy_net(state.cuda())
+     
+
+    def _get_action(self,probs, log_probs):
+        distribution = Categorical(probs)
+        action_index = distribution.sample()
+        entropy= distribution.entropy()
+        return log_probs[action_index.item()],action_index.item(),entropy
+
+    def _predict_state_value_with_value_netrual_network(self,state):
         return self._state_value_net(state.cuda())
 
     def _evaluate_policy_with_Monte_Carlo(self,episode_rewards):
-    
         eps= np.finfo(np.float32).eps.item()
 
         # the return at time t
@@ -89,18 +93,24 @@ class REINFORCEAgent(BaseAgent):
     
     def _run_episodes(self, game, t, init_state):
         episode_log_prob_actions = []
+        episode_probs=[]
         episode_rewards = []
-        episode_state_values=[]
+        episode_state_values = []
+        episode_entropys=[]
 
         current_state = init_state
         
         # run one episode until done
         while (True):
-            state_value = self._predict_state_value_with_netrual_network(current_state)
+            state_value = self._predict_state_value_with_value_netrual_network(current_state)
             episode_state_values.append(state_value)
 
-            log_prob_action, action_t = self._get_action(current_state)
+            probs, log_probs = self._predict_action_probability_with_policy_netural_network(current_state)
+            episode_probs.append(probs)
+
+            log_prob_action, action_t,entropy = self._get_action(probs, log_probs)
             episode_log_prob_actions.append(log_prob_action)
+            episode_entropys.append(entropy)
 
             # run the selected action and observe next screenshot & reward
             next_screentshot, reward_t, terminal, score_t = self._game_step_forward(game, action_t)
@@ -113,10 +123,9 @@ class REINFORCEAgent(BaseAgent):
                 current_state = self._get_next_state(current_state, next_screentshot)
                 t = t+1
 
-        return episode_log_prob_actions, episode_rewards, episode_state_values,score_t, t
+        return episode_probs,episode_log_prob_actions, episode_rewards, episode_state_values,episode_entropys,score_t, t
 
     def _fit_state_value_model(self, epsode_state_value, G_t_tensor):
-        
         # fit the state value 
         state_value_loss = []
         for state_value,g in zip(epsode_state_value,G_t_tensor):
@@ -136,20 +145,26 @@ class REINFORCEAgent(BaseAgent):
         return list(map(sub,episode_returns,episode_state_values))
         
  
-    def _improve_policy(self, episode_log_prob_actions,advantages,epsode_state_values):
+    def _improve_policy(self, episode_log_prob_actions,advantages,epsode_state_values,episode_entropys):
         # improve the policy 
         policy_loss = []
-        for log_prob, advantage in zip(episode_log_prob_actions,advantages):
-            
+        for log_prob, advantage in zip(episode_log_prob_actions,advantages,episode_entropys):
             policy_loss.append(-log_prob * advantage.detach())
 
         self._policy_optimizer.zero_grad()
-        policy_loss = torch.stack(policy_loss, dim=0).sum()
-        policy_loss.backward()
+        policy_loss = torch.stack(policy_loss, dim=0).mean()
+        entropy_loss = torch.stack(episode_entropys, dim=0).mean()
+        
+        # with entorpy bonus
+        total_policy_loss= policy_loss-self._entropy_beta*entropy_loss
+
+        total_policy_loss.backward()
         for param in self._policy_net.parameters():
             param.grad.data.clamp_(-1, 1)
-        self._policy_optimizer.step()   
-            
+        self._policy_optimizer.step() 
+
+       
+     
     
     def train(self, game):
         t = 0
@@ -174,7 +189,7 @@ class REINFORCEAgent(BaseAgent):
         while (True):
 
             # Sample a single trajectory 
-            episode_log_prob_actions, episode_rewards, episode_state_values,final_score, t = self._run_episodes(game, t, initial_state)
+            episode_log_prob_actions, episode_rewards, episode_state_values,episode_entropys,final_score, t = self._run_episodes(game, t, initial_state)
 
             is_best = False
             if final_score > highest_score:
@@ -190,10 +205,9 @@ class REINFORCEAgent(BaseAgent):
             # Estimate the advantage. The state value is used as the baseline
             advantages=self._evaluate_advantate(episode_returns,episode_state_values)
 
-            #  Update the policy  
-            self._improve_policy(episode_log_prob_actions,advantages,episode_state_values)     
-            
-            
+            #Update the policy  
+            self._improve_policy(episode_log_prob_actions,advantages,episode_state_values,episode_entropys)     
+                                  
             checkpoint = {
                 'time_step': t,
                 'epoch': epoch,
