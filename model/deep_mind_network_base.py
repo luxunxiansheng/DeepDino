@@ -34,9 +34,13 @@
 # /
 
 
+import numpy as np
 import torch
 import torch.nn as nn
+
 from utils.utilis import Utilis
+
+from noisy_linear import NoisyLinear
 
 
 class DeepMindNetworkBase(nn.Module):
@@ -48,6 +52,9 @@ class DeepMindNetworkBase(nn.Module):
         if network == 'CategoricalNetwork':
             from model.categorical_network import CategoricalNetwork
             return CategoricalNetwork(input_channels, output_size)
+        if network == 'NoisyNetwork':
+            from model.noisy_network import NoisyNetwork
+            return NoisyNetwork(input_channels, output_size)
 
         return None    
         
@@ -58,7 +65,7 @@ class DeepMindNetworkBase(nn.Module):
     and keep the remains into the base part.  Here is the base part."
     '''
 
-    def __init__(self, input_channels):
+    def __init__(self, input_channels,noisy=False):
 
         super(DeepMindNetworkBase, self).__init__()
 
@@ -79,12 +86,22 @@ class DeepMindNetworkBase(nn.Module):
             nn.ReLU()
         )
 
-        self._fc1 = nn.Sequential(
-            Utilis.layer_init(nn.Linear(7*7*64, 512)),
+        #defalut:7*7*64 for (84,84) width and height
+        conv_out_size = self._get_conv_out(input_channels)
+
+        if noisy:
+            self._fc1 = nn.Sequential(NoisyLinear(conv_out_size, 512),
             nn.ReLU()
-        )
+            )  
+        else:
+            self._fc1 = nn.Sequential(
+                Utilis.layer_init(nn.Linear(conv_out_size, 512)),
+                nn.ReLU()
+            )
         
-      
+    def _get_conv_out(self, shape):
+        o = self.conv(torch.zeros(1, *shape))
+        return int(np.prod(o.size())) 
     
     def forward(self, input):
         x = torch.transpose(input, 0, 1)

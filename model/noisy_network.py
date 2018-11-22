@@ -36,65 +36,26 @@
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-from torch.autograd import Variable
-from torch.nn import functional as F
 
-from model.base_network import BaseNetwork
+from model.deep_mind_network_base import DeepMindNetworkBase
 from utils.utilis import Utilis
+from noisy_linear import NoisyLinear
 
 
-class DeepMindNetworkWithBatchNormal(nn.Module, BaseNetwork):
+class NoisyNetwork(DeepMindNetworkBase):
     '''
-    Add a batch normal layer based on the convolution newtork proposed by Mnih at al(2015) 
-    in the paper "Playing Atari with Deep Reinforcement earning"
-
+    Add noise in the parameter space 
     '''
 
     def __init__(self, input_channels, output_size):
-
-        super(DeepMindNetworkWithBatchNormal, self).__init__()
-
-        self._input_channels = input_channels
+        super(NoisyNetwork, self).__init__(input_channels,noisy=True)
         self._output_size = output_size
-
-        self.conv1 = nn.Sequential(
-            Utilis.layer_init(nn.Conv2d(self._input_channels, 32, kernel_size=8, stride=4)),
-            Utilis.layer_init(nn.BatchNorm2d(32)),
-            nn.ReLU()
-        )
-
-        self.conv2 = nn.Sequential(
-            Utilis.layer_init(nn.Conv2d(32, 64, kernel_size=4, stride=2)),
-            Utilis.layer_init(nn.BatchNorm2d(64)),
-            nn.ReLU()
-        )
-
-        self.conv3 = nn.Sequential(
-            Utilis.layer_init(nn.Conv2d(64, 64, kernel_size=3, stride=1)),
-            Utilis.layer_init(nn.BatchNorm2d(64)),
-            nn.ReLU()
-        )
-
-        self.fc1 = nn.Sequential(
-            Utilis.layer_init(nn.Linear(7*7*64, 512)),
-            nn.ReLU()
-        )
-
-        self.fc2 = nn.Sequential(
-            Utilis.layer_init(nn.Linear(512, self._output_size))
+        self._base = super(NoisyNetwork,self)
+        self._header = nn.Sequential(
+            NoisyLinear(512, self._output_size)
         )
 
     def forward(self, input):
-        x = torch.transpose(input, 0, 1)
-        x = self.conv1(x)
-        x = self.conv2(x)
-        x = self.conv3(x)
-
-        x = x.view(1, -1)
-
-        x = self.fc1(x)
-        x = self.fc2(x)
-
+        x = self._base.forward(input)
+        x = self._header(x)
         return torch.squeeze(x)

@@ -93,7 +93,6 @@ class REINFORCEAgent(BaseAgent):
     
     def _run_episodes(self, game, t, init_state):
         episode_log_prob_actions = []
-        episode_probs=[]
         episode_rewards = []
         episode_state_values = []
         episode_entropys=[]
@@ -104,9 +103,6 @@ class REINFORCEAgent(BaseAgent):
         while (True):
             state_value = self._predict_state_value_with_value_netrual_network(current_state)
             episode_state_values.append(state_value)
-
-            probs, log_probs = self._predict_action_probability_with_policy_netural_network(current_state)
-            episode_probs.append(probs)
 
             log_prob_action, action_t,entropy = self._get_action(probs, log_probs)
             episode_log_prob_actions.append(log_prob_action)
@@ -123,7 +119,7 @@ class REINFORCEAgent(BaseAgent):
                 current_state = self._get_next_state(current_state, next_screentshot)
                 t = t+1
 
-        return episode_probs,episode_log_prob_actions, episode_rewards, episode_state_values,episode_entropys,score_t, t
+        return episode_log_prob_actions, episode_rewards, episode_state_values,episode_entropys,score_t, t
 
     def _fit_state_value_model(self, epsode_state_value, G_t_tensor):
         # fit the state value 
@@ -163,7 +159,6 @@ class REINFORCEAgent(BaseAgent):
             param.grad.data.clamp_(-1, 1)
         self._policy_optimizer.step() 
 
-       
      
     
     def train(self, game):
@@ -207,7 +202,7 @@ class REINFORCEAgent(BaseAgent):
 
             #Update the policy  
             self._improve_policy(episode_log_prob_actions,advantages,episode_state_values,episode_entropys)     
-                                  
+           
             checkpoint = {
                 'time_step': t,
                 'epoch': epoch,
