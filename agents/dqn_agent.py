@@ -73,22 +73,32 @@ class DQNAgent(BaseAgent):
         self._criterion = nn.SmoothL1Loss()
         self._optimizer = optim.RMSprop(self._policy_net.parameters(), momentum=self._momentum, lr=self._lr)
 
-    # e-greedy exploration
 
-    def _get_action(self, epsilon, state):
+    def _get_exploration_method(self):
+        if self._network_name == "NoisyNetwork":
+            return "ParameterNoisy"
+        else:
+            return "ActionNoisy"
+            
+
+    def _explore_with_noisy_network(self, state):
+        q = self._policy_net(state.cuda())
+        return  torch.argmax(q).tolist()    
+
+    def _explore_with_e_greedy(self, epsilon, state):
         if random.random() <= epsilon:
             return  random.randrange(self._action_space)
         else:
             q = self._policy_net(state.cuda())
-            return  torch.argmax(q).tolist()
-       
+            return  torch.argmax(q).tolist()    
 
     # greedy policy
     def _get_optimal_action(self, state):
         
         q = self._policy_net(state.cuda())
         return  torch.argmax(q).tolist()
-      
+    
+    
 
     def _predict_optimal_Q_value_with_DoubleDQN(self, state_t1):
         # predict the q value of the next state with the policy network
@@ -174,12 +184,18 @@ class DQNAgent(BaseAgent):
             reward_t = 0
             action_t =0
 
-            # choose an action epsilon greedy
-            action_t = self._get_action(epsilon, current_state)
+            
+            if "ParameterNoisy" == self._get_exploration_method():
+                # choose an action epsilon greedy
+                action_t = self._explore_with_e_greedy(epsilon, current_state)
 
-            # reduced the epsilon (exploration parameter) gradually
-            if epsilon > self._final_epsilon:
-                epsilon -= (self._init_epsilon-self._final_epsilon) / self._explore
+                # reduced the epsilon (exploration parameter) gradually
+                if epsilon > self._final_epsilon:
+                    epsilon -= (self._init_epsilon-self._final_epsilon) / self._explore
+            
+            else:
+                action_t=self._explore_with_noisy_network(current_state)
+            
 
             # run the selected action and observe next screenshot & reward
             next_screentshot, reward_t, terminal, score_t = self._game_step_forward(game, action_t)
@@ -247,7 +263,7 @@ class DQNAgent(BaseAgent):
         self._policy_net.load_state_dict(state_dict)
 
         # init the start state
-        screenshot, _, _, _ = self._game_step(game, Action.DO_NOTHING)
+        screenshot, _, _, _ = self._game_step_forward(game, 0)
 
         # the first state stack containes the first 4 frames
         initial_state = torch.stack((screenshot, screenshot, screenshot, screenshot))
@@ -255,14 +271,14 @@ class DQNAgent(BaseAgent):
         current_state = initial_state
 
         while (True):  # endless running
-            action_t = Action.DO_NOTHING
+            action_t = 0
 
-            # choose an action epsilon greedy
+            
             if t % self._frame_per_action == 0:  # parameter to skip frames for actions
                 action_t = self._get_optimal_action(current_state)
 
             # run the selected action and observed next state and reward
-            next_screenshot, _, terminal, _ = self._game_step(game, action_t)
+            next_screenshot, _, terminal, _ = self._game_step_forward(game, action_t)
 
             # assemble the next state stack which contains the lastest 3 states and the next state
             next_state = self._get_next_state(current_state, next_screenshot)

@@ -38,9 +38,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+from model.noisy_linear import NoisyLinear
 from utils.utilis import Utilis
-
-from noisy_linear import NoisyLinear
 
 
 class DeepMindNetworkBase(nn.Module):
@@ -86,22 +85,19 @@ class DeepMindNetworkBase(nn.Module):
             nn.ReLU()
         )
 
-        #defalut:7*7*64 for (84,84) width and height
-        conv_out_size = self._get_conv_out(input_channels)
+        
 
         if noisy:
-            self._fc1 = nn.Sequential(NoisyLinear(conv_out_size, 512),
+            self._fc1 = nn.Sequential(NoisyLinear(7*7*64, 512),
             nn.ReLU()
             )  
         else:
             self._fc1 = nn.Sequential(
-                Utilis.layer_init(nn.Linear(conv_out_size, 512)),
+                Utilis.layer_init(nn.Linear(7*7*64, 512)),
                 nn.ReLU()
             )
         
-    def _get_conv_out(self, shape):
-        o = self.conv(torch.zeros(1, *shape))
-        return int(np.prod(o.size())) 
+  
     
     def forward(self, input):
         x = torch.transpose(input, 0, 1)
