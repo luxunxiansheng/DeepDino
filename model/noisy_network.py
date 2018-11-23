@@ -39,7 +39,7 @@ import torch.nn as nn
 
 from model.deep_mind_network_base import DeepMindNetworkBase
 from utils.utilis import Utilis
-from noisy_linear import NoisyLinear
+from model.noisy_linear import NoisyLinear
 
 
 class NoisyNetwork(DeepMindNetworkBase):

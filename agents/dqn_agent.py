@@ -185,7 +185,7 @@ class DQNAgent(BaseAgent):
             action_t =0
 
             
-            if "ParameterNoisy" == self._get_exploration_method():
+            if "ActionNoisy" == self._get_exploration_method():
                 # choose an action epsilon greedy
                 action_t = self._explore_with_e_greedy(epsilon, current_state)
 
