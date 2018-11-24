@@ -64,7 +64,7 @@ tensorboard.
 To use the tensorboad, just type the command in a terminal as below:
 
 *
-*    tensorboad --logdir ./log  --port 8008 
+*    tensorboard --logdir ./log  --port 8008 
 *
 
 A tensorboard server will be launched and you can visit the tensorflow web page from a 
@@ -86,8 +86,6 @@ peformance will degrade badly. Different accelerations mean non-stationary rando
 
 
 
-# Who is the agent? 
-
 # On States
 1.Agents should construct their own state from their experience
 2.Agent state is a function of the previous state and the new observertion 
@@ -102,12 +100,13 @@ the paper "Human-level control through deep reinforcement learning" )
 ###  1.Value based
 
 ####  1.1 DQN  ####
+
 ####  1.2 Double DQN ####
+Based on our experiments, it seems the Double DQN is not necessarily better than DQN. This is perhaps for there are only two values in action space and the over maximal is not that seriouis as in the large action space.
 
-
-Based on our experiments, it seems the Double DQN is not necessarily better than DQN. This maybe the expected observation in Dino game for there are only two values in action space and the over max is not that seriouis as in a large action space.
-
-
+#### 1.3 Noisy Network ####
+Epsilon greedy policy is to add noise on action. During the exploration,even for a same state, one stochastic action will be chosen. In paper [Noisy Network for Exploration](https://arxiv.org/abs/1706.10295 ),the authers introduce to add parameters noisy to the network's weights to aid efficient exploration. However, from our observation, the outcome seems not as good as basic DQN. 
+ 
 ### 2. Policy gradient 
 The goal of reinforcement learning is to find an optimal behavior strategy for the agent to obtain optimal rewards. The policy gradient method target at modeling and optimizing the policy directly. The policy is usually modeled with a parameterized funciton respect to $\theta,\pi_\theta(a|s)$. The value of the reward (objective) function depends on this policy and then various algorithms can be applied to optimize $\theta$  for the best reward.
 

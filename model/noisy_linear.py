@@ -60,8 +60,14 @@ class NoisyLinear(nn.Linear):
 
     def forward(self, input):
         self.epsilon_weight.normal_()
+        weight=self.weight+self.sigma_weight*self.epsilon_weight.data
+        
         bias = self.bias
         if bias is not None:
             self.epsilon_bias.normal_()
             bias = bias + self.sigma_bias * self.epsilon_bias.data
-        return F.linear(input, self.weight + self.sigma_weight * self.epsilon_weight.data, bias)
+
+        return F.linear(input, weight, bias)
+
+    def sigma_SNR(self):
+        return ((self.weight**2).mean().sqrt()/ (self.sigma_weight**2).mean().sqrt()).item()

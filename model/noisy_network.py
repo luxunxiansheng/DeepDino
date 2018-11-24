@@ -59,3 +59,7 @@ class NoisyNetwork(DeepMindNetworkBase):
         x = self._base.forward(input)
         x = self._header(x)
         return torch.squeeze(x)
+
+
+    def sigma_SNR(self):
+        return self._header[0].sigma_SNR()

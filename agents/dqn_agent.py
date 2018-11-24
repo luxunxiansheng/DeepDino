@@ -97,9 +97,7 @@ class DQNAgent(BaseAgent):
         
         q = self._policy_net(state.cuda())
         return  torch.argmax(q).tolist()
-    
-    
-
+        
     def _predict_optimal_Q_value_with_DoubleDQN(self, state_t1):
         # predict the q value of the next state with the policy network
         predicted_Q_sa_t1 = self._policy_net(state_t1.cuda()).detach()
@@ -115,8 +113,13 @@ class DQNAgent(BaseAgent):
         the_optimal_q_value_of_next_state = torch.max(predicted_Q_sa_t1)
         return the_optimal_q_value_of_next_state
 
-    def _learn(self, samples):
+    def _get_sigma_SNR_policy_Net(self):
+        return self._policy_net.sigma_SNR()
 
+    def _get_sigma_SNR_target_net(self):
+        return self._target_net.sigma_SNR()   
+    
+    def _learn(self, samples):
         q_value = torch.zeros(self._batch_size, self._action_space).cuda()
         td_target = torch.zeros(self._batch_size, self._action_space).cuda()
 
@@ -184,7 +187,7 @@ class DQNAgent(BaseAgent):
             reward_t = 0
             action_t =0
 
-            
+            # Dithering in the action space 
             if "ActionNoisy" == self._get_exploration_method():
                 # choose an action epsilon greedy
                 action_t = self._explore_with_e_greedy(epsilon, current_state)
@@ -192,13 +195,15 @@ class DQNAgent(BaseAgent):
                 # reduced the epsilon (exploration parameter) gradually
                 if epsilon > self._final_epsilon:
                     epsilon -= (self._init_epsilon-self._final_epsilon) / self._explore
-            
+            # Dithering in the parameter space
             else:
                 action_t=self._explore_with_noisy_network(current_state)
             
 
             # run the selected action and observe next screenshot & reward
             next_screentshot, reward_t, terminal, score_t = self._game_step_forward(game, action_t)
+
+            snr= self._get_sigma_SNR_policy_Net()
 
             # assemble the next state  which contains the lastest 3 screenshot  and the next screenshot
             next_state = self._get_next_state(current_state, next_screentshot)
@@ -207,7 +212,7 @@ class DQNAgent(BaseAgent):
             grid_img = torchvision.utils.make_grid(current_state, 4, padding=10)
             grid_img2 = torchvision.utils.make_grid(next_state, 4, padding=10)
             self._show(grid_img,grid_img2) 
-            
+        
             """
 
             # store the transition in experience_replay_memory
@@ -240,7 +245,7 @@ class DQNAgent(BaseAgent):
                     'state_dict': self._policy_net.state_dict()
                 }
                 Utilis.save_checkpoint(checkpoint, is_best,self._my_name)
-                self._tensorboard_log(t, epoch, highest_score, score_t, loss, self._policy_net)
+                self._tensorboard_log(t, epoch, highest_score, snr, loss, self._policy_net)
                
                 epoch = epoch + 1
             else:
@@ -271,11 +276,8 @@ class DQNAgent(BaseAgent):
         current_state = initial_state
 
         while (True):  # endless running
-            action_t = 0
-
-            
-            if t % self._frame_per_action == 0:  # parameter to skip frames for actions
-                action_t = self._get_optimal_action(current_state)
+           
+            action_t = self._get_optimal_action(current_state)
 
             # run the selected action and observed next state and reward
             next_screenshot, _, terminal, _ = self._game_step_forward(game, action_t)
