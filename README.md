@@ -99,13 +99,16 @@ the paper "Human-level control through deep reinforcement learning" )
 
 ###  1.Value based
 
-####  1.1 DQN  ####
+####  1.1 DQN 
 
-####  1.2 Double DQN ####
-Based on our experiments, it seems the Double DQN is not necessarily better than DQN. This is perhaps for there are only two values in action space and the over maximal is not that seriouis as in the large action space.
+####  1.2 Double DQN 
+Based on our experiments, it seems the Double DQN is not necessarily better than DQN. This is perhaps for there are only two values in action space and the over maximal is not that seriouis as in the large action space
 
-#### 1.3 Noisy Network ####
+#### 1.3 Noisy Network 
 Epsilon greedy policy is to add noise on action. During the exploration,even for a same state, one stochastic action will be chosen. In paper [Noisy Network for Exploration](https://arxiv.org/abs/1706.10295 ),the authers introduce to add parameters noisy to the network's weights to aid efficient exploration. However, from our observation, the outcome seems not as good as basic DQN. 
+
+#### 1.4 Dueling network 
+The key insight behind dueling network is that for many states, it is unnecessary  to estimate  the value of each action choice. In some states ,it is of importance to know which action to take, for instance, when dino is approaching an obstacle. But in many other states, the choice of action has no repercussion on  what happens.  However, for bootstrapping based algorithm, the estimation of state values is of great importance for every state.  
  
 ### 2. Policy gradient 
 The goal of reinforcement learning is to find an optimal behavior strategy for the agent to obtain optimal rewards. The policy gradient method target at modeling and optimizing the policy directly. The policy is usually modeled with a parameterized funciton respect to $\theta,\pi_\theta(a|s)$. The value of the reward (objective) function depends on this policy and then various algorithms can be applied to optimize $\theta$  for the best reward.
@@ -121,7 +124,7 @@ The general form of policy gradient with baseline is summarized as :
 
 See paper [Schulman et al. 2016](https://arxiv.org/abs/1506.02438) for more detials
 
-#### 2.1  REINFORCE  ####
+#### 2.1  REINFORCE  
 REINFORCE (Monte-Carlo policy gradient) relies on an estimated return by Monte-Carlo methods using episode samples to update the policy parameter θ. REINFORCE works because the expectation of the sample gradient is equal to the actual gradient, that is, the sample gradient is a unbiased estimation of the actual gradient:
 $$\nabla_\theta J(\theta)= \mathbb{E}_\pi[Q^\pi(s, a) \nabla_\theta \ln \pi_\theta(a \vert s)] = \mathbb{E}_\pi[G_t\nabla_\theta \ln \pi_\theta(a \vert s)]$$   
 
@@ -147,7 +150,7 @@ The algorithm is listed as below:
     
 
 
-#### 2.2 Actor-Critic ####
+#### 2.2 Actor-Critic 
 Two main components in policy gradient are the policy model and the value function. although the REINFORCE with baseline method learns both a policy and a state-value function, in Sutton's oppnion, [13.5 section of the book "Reinforcement Learning: An introduction"](http://incompleteideas.net/book/the-book-2nd.html), this is not considered to be an actor-critic method because he thinks its state-value function is used only as a baseline ,not as a critic. That is, it is not used for bootstrapping , but only as a baseline for a state whose estimate is being updated. 
 
 There are many variants of actor-critic method. We implmenent A3C in our case and here is the  outline:

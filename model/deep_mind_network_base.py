@@ -54,6 +54,9 @@ class DeepMindNetworkBase(nn.Module):
         if network == 'NoisyNetwork':
             from model.noisy_network import NoisyNetwork
             return NoisyNetwork(input_channels, output_size)
+        if network == 'DuelingNetwork':
+            from model.dueling_network import DuelingNetwork
+            return DuelingNetwork(input_channels,output_size)    
 
         return None    
         

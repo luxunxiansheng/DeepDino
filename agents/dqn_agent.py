@@ -94,7 +94,6 @@ class DQNAgent(BaseAgent):
 
     # greedy policy
     def _get_optimal_action(self, state):
-        
         q = self._policy_net(state.cuda())
         return  torch.argmax(q).tolist()
         
@@ -116,8 +115,6 @@ class DQNAgent(BaseAgent):
     def _get_sigma_SNR_policy_Net(self):
         return self._policy_net.sigma_SNR()
 
-    def _get_sigma_SNR_target_net(self):
-        return self._target_net.sigma_SNR()   
     
     def _learn(self, samples):
         q_value = torch.zeros(self._batch_size, self._action_space).cuda()
@@ -194,17 +191,18 @@ class DQNAgent(BaseAgent):
 
                 # reduced the epsilon (exploration parameter) gradually
                 if epsilon > self._final_epsilon:
-                    epsilon -= (self._init_epsilon-self._final_epsilon) / self._explore
+                    epsilon -= (self._init_epsilon - self._final_epsilon) / self._explore
+                    
+               
             # Dithering in the parameter space
             else:
-                action_t=self._explore_with_noisy_network(current_state)
-            
+                action_t = self._explore_with_noisy_network(current_state)
+                snr= self._get_sigma_SNR_policy_Net()
 
             # run the selected action and observe next screenshot & reward
             next_screentshot, reward_t, terminal, score_t = self._game_step_forward(game, action_t)
 
-            snr= self._get_sigma_SNR_policy_Net()
-
+           
             # assemble the next state  which contains the lastest 3 screenshot  and the next screenshot
             next_state = self._get_next_state(current_state, next_screentshot)
 
@@ -218,6 +216,7 @@ class DQNAgent(BaseAgent):
             # store the transition in experience_replay_memory
             replay_memory.push((current_state, action_t, reward_t, next_state, terminal))
 
+            
             # Not to learn and log until the replay memory is not too empty
             if replay_memory.size() > self._observations:
                 experience_batch = replay_memory.sample(self._batch_size)
@@ -228,6 +227,8 @@ class DQNAgent(BaseAgent):
 
                 if t % self._update_target_interval == 0:
                     self._update_target_net()
+                
+
 
             if terminal:
                 current_state = initial_state
@@ -245,7 +246,7 @@ class DQNAgent(BaseAgent):
                     'state_dict': self._policy_net.state_dict()
                 }
                 Utilis.save_checkpoint(checkpoint, is_best,self._my_name)
-                self._tensorboard_log(t, epoch, highest_score, snr, loss, self._policy_net)
+                self._tensorboard_log(t, epoch, highest_score, score_t, loss, self._policy_net)
                
                 epoch = epoch + 1
             else:
