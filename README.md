@@ -98,7 +98,16 @@ the paper "Human-level control through deep reinforcement learning" )
 # Algorithms used in this project 
 
 ###  1.Value based
+The theory behind the value based algorithms is on fixed point.  
 
+Here is one of ways to understand this theory:
+
+1) Get the solution of Bellman equations is actually to get the solution of one set of linear equations. 
+
+2) [Jocobi method is to approach the exact solutions of linear equations in a iterative way.](https://www.maa.org/press/periodicals/loci/joma/iterative-methods-for-solving-iaxi-ibi-jacobis-method)
+
+3) It is worth noting that the key point to understand the Bellman operator is to think V as a full vector which cover all of the states in specific iteration.
+ 
 ####  1.1 DQN 
 
 ####  1.2 Double DQN 
